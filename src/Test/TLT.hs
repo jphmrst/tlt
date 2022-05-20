@@ -26,9 +26,6 @@ GitHub repository <https://github.com/jphmrst/TLT/>.
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
--- For Tasty
-{-# LANGUAGE DeriveDataTypeable #-}
-
 module Test.TLT (
   -- * The TLT transformer
   TLT, tlt, MonadTLT, liftTLT,
@@ -73,10 +70,6 @@ import qualified Control.Monad.Trans.Writer.Lazy as WL
 import qualified Control.Monad.Trans.Writer.Strict as WS
 import System.Console.ANSI
 import System.Exit
-
--- For Tasty
-import Data.Typeable
-import qualified Test.Tasty.Providers as TTP
 
 -- * Results of tests
 
@@ -236,7 +229,7 @@ type TLTstate = (TLTopts, TRBuf)
 -- |Monad transformer for TLT tests.  This layer stores the results
 -- from tests as they are executed.
 newtype Monad m => TLT m r = TLT { unwrap :: StateT TLTstate m r }
-  deriving (Functor, Applicative, Monad, MonadTrans, MonadIO, Typeable)
+  deriving (Functor, Applicative, Monad, MonadTrans, MonadIO)
 
 {- ------------------------------------------------------------ -}
 
@@ -625,12 +618,3 @@ nothingP = liftAssertionPure isNothing
 -- |Assert that a `Maybe` result ofa computation is `Nothing`.
 nothing :: Monad m => m (Maybe a) -> Assertion m
 nothing = assertionPtoM nothingP
-
--- -- TLT integration to go here
-
-instance (Typeable m, MonadIO m) => TTP.IsTest (TLT m ()) where
-  -- options :: Test.Tasty.Options.OptionSet, https://tinyurl.com/y5x2nenr
-  run options tlt _ = error "TODO"
-
-  -- testOptions :: Tagged (TLT m ()) [OptionDescription]
-  testOptions = error "TODO"
