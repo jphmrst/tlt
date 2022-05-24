@@ -34,8 +34,6 @@ import Test.TLT.Class
 -- When using TLT from some other package (as opposed to using TLT
 -- itself as your test framework, and wishing to see its
 -- human-oriented output directly), consider using `tltCore` instead.
---
--- Defined in module `Test.TLT.Report`.
 tlt :: MonadIO m => TLT m r -> m ()
 tlt tlt = do
   liftIO $ putStrLn "Running tests:"
@@ -43,8 +41,6 @@ tlt tlt = do
   liftIO $ report opts $ results
 
 -- |Report the results of tests.
---
--- Defined in module `Test.TLT.Report`.
 report :: TLTopts -> [TestResult] -> IO ()
 report (TLTopts showPasses exitAfterFailDisplay) trs =
   let fails = totalFailCount trs
@@ -84,46 +80,30 @@ report (TLTopts showPasses exitAfterFailDisplay) trs =
                 report' ("  " ++ ind) trs'
 
 -- |Command to set an ANSI terminal to boldface black.
---
--- Defined in module `Test.TLT.Report`.
 boldBlack = setSGR [
   SetColor Foreground Vivid Black, SetConsoleIntensity BoldIntensity ]
 -- |Command to set an ANSI terminal to boldface red.
---
--- Defined in module `Test.TLT.Report`.
 boldRed = setSGR [
   SetColor Foreground Vivid Red, SetConsoleIntensity BoldIntensity ]
 -- |Command to set an ANSI terminal to boldface green.
---
--- Defined in module `Test.TLT.Report`.
 boldGreen = setSGR [
   SetColor Foreground Vivid Green, SetConsoleIntensity BoldIntensity ]
 
 -- |Command to set an ANSI terminal to medium-weight red.
---
--- Defined in module `Test.TLT.Report`.
 mediumRed = setSGR [
   SetColor Foreground Vivid Red, SetConsoleIntensity NormalIntensity ]
 -- |Command to set an ANSI terminal to medium-weight green.
---
--- Defined in module `Test.TLT.Report`.
 mediumGreen = setSGR [
   SetColor Foreground Vivid Green, SetConsoleIntensity NormalIntensity ]
 -- |Command to set an ANSI terminal to medium-weight blue.
---
--- Defined in module `Test.TLT.Report`.
 mediumBlue = setSGR [
   SetColor Foreground Vivid Blue, SetConsoleIntensity NormalIntensity ]
 -- |Command to set an ANSI terminal to medium-weight black.
---
--- Defined in module `Test.TLT.Report`.
 mediumBlack = setSGR [
   SetColor Foreground Vivid Black, SetConsoleIntensity NormalIntensity ]
 
 -- |Command to set an ANSI terminal to the standard TLT weight and
 -- color for a passing test.
---
--- Defined in module `Test.TLT.Report`.
 greenPass = do
   mediumBlue
   putStr "Pass"
@@ -131,8 +111,6 @@ greenPass = do
 
 -- |Command to set an ANSI terminal to the standard TLT weight and
 -- color for a failing test.
---
--- Defined in module `Test.TLT.Report`.
 redFail = do
   boldRed
   putStr "FAIL"

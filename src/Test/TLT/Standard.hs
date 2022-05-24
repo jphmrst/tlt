@@ -23,8 +23,6 @@ infix 1 @==-, @/=-, @<-, @>-, @<=-, @>=-
 -- expected and an actual /value/; see `(@==)` to compare the result
 -- of a /monadic computation/ to an expected value.
 --
--- Defined in module `Test.TLT.Standard`.
---
 -- ===== Examples
 --
 -- > test :: Monad m => TLT m ()
@@ -39,8 +37,6 @@ infix 1 @==-, @/=-, @<-, @>-, @<=-, @>=-
 -- compare the result of a /monadic computation/ to an expected value;
 -- see `(@==-)` to compare an /actual value/ to the expected value.
 --
--- Defined in module `Test.TLT.Standard`.
---
 -- ===== Examples
 --
 -- > test :: Monad m => TLT m ()
@@ -54,8 +50,6 @@ infix 1 @==-, @/=-, @<-, @>-, @<=-, @>=-
 -- |Assert that two values are not equal.  This assertion takes an
 -- expected and an actual /value/; see `(@/=)` to compare the result
 -- of a /monadic computation/ to an expected value.
---
--- Defined in module `Test.TLT.Standard`.
 (@/=-) :: (Monad m, Eq a, Show a) => a -> a -> Assertion m
 (@/=-) = liftAssertion2Pure (/=) $
   \ exp actual ->
@@ -65,8 +59,6 @@ infix 1 @==-, @/=-, @<-, @>-, @<=-, @>=-
 -- This assertion compares the result of a /monadic computation/ to an
 -- expected value; see `(@/=-)` to compare an /actual value/ to the
 -- expected value.
---
--- Defined in module `Test.TLT.Standard`.
 (@/=) :: (Monad m, Eq a, Show a) => a -> m a -> Assertion m
 (@/=) = assertion2PtoM (@/=-)
 
@@ -74,8 +66,6 @@ infix 1 @==-, @/=-, @<-, @>-, @<=-, @>=-
 -- This assertion takes an expected and an actual /value/; see `(@<)`
 -- to compare the result of a /monadic computation/ to an expected
 -- value.
---
--- Defined in module `Test.TLT.Standard`.
 (@<-) :: (Monad m, Ord a, Show a) => a -> a -> Assertion m
 (@<-) = liftAssertion2Pure (<) $
   \ exp actual ->
@@ -85,8 +75,6 @@ infix 1 @==-, @/=-, @<-, @>-, @<=-, @>=-
 -- calculated value.  This assertion compares the result of a /monadic
 -- computation/ to an expected value; see `(@<-)` to compare an
 -- /actual value/ to the expected value.
---
--- Defined in module `Test.TLT.Standard`.
 (@<) :: (Monad m, Ord a, Show a) => a -> m a -> Assertion m
 (@<) = assertion2PtoM (@<-)
 
@@ -94,8 +82,6 @@ infix 1 @==-, @/=-, @<-, @>-, @<=-, @>=-
 -- This assertion takes an expected and an actual /value/; see `(@>)`
 -- to compare the result of a /monadic computation/ to an expected
 -- value.
---
--- Defined in module `Test.TLT.Standard`.
 (@>-) :: (Monad m, Ord a, Show a) => a -> a -> Assertion m
 (@>-) = liftAssertion2Pure (>) $
   \ exp actual ->
@@ -105,8 +91,6 @@ infix 1 @==-, @/=-, @<-, @>-, @<=-, @>=-
 -- calculated value.  This assertion compares the result of a /monadic
 -- computation/ to an expected value; see `(@>-)` to compare an
 -- /actual value/ to the expected value.
---
--- Defined in module `Test.TLT.Standard`.
 (@>) :: (Monad m, Ord a, Show a) => a -> m a -> Assertion m
 (@>) = assertion2PtoM (@>-)
 
@@ -114,8 +98,6 @@ infix 1 @==-, @/=-, @<-, @>-, @<=-, @>=-
 -- This assertion takes an expected and an actual /value/; see `(@<=)`
 -- to compare the result of a /monadic computation/ to an expected
 -- value.
---
--- Defined in module `Test.TLT.Standard`.
 (@<=-) :: (Monad m, Ord a, Show a) => a -> a -> Assertion m
 (@<=-) = liftAssertion2Pure (<=) $
   \ exp actual ->
@@ -125,8 +107,6 @@ infix 1 @==-, @/=-, @<-, @>-, @<=-, @>=-
 -- calculated value.  This assertion compares the result of a /monadic
 -- computation/ to an expected value; see `(@<=-)` to compare an
 -- /actual value/ to the expected value.
---
--- Defined in module `Test.TLT.Standard`.
 (@<=) :: (Monad m, Ord a, Show a) => a -> m a -> Assertion m
 (@<=) = assertion2PtoM (@<=-)
 
@@ -134,8 +114,6 @@ infix 1 @==-, @/=-, @<-, @>-, @<=-, @>=-
 -- This assertion takes an expected and an actual /value/; see `(@>=)`
 -- to compare the result of a /monadic computation/ to an expected
 -- value.
---
--- Defined in module `Test.TLT.Standard`.
 (@>=-) :: (Monad m, Ord a, Show a) => a -> a -> Assertion m
 (@>=-) = liftAssertion2Pure (>=) $
   \ exp actual ->
@@ -145,50 +123,36 @@ infix 1 @==-, @/=-, @<-, @>-, @<=-, @>=-
 -- calculated value.  This assertion compares the result of a /monadic
 -- computation/ to an expected value; see `(@>=-)` to compare an
 -- /actual value/ to the expected value.
---
--- Defined in module `Test.TLT.Standard`.
 (@>=) :: (Monad m, Ord a, Show a) => a -> m a -> Assertion m
 (@>=) = assertion2PtoM (@>=-)
 
 -- |Assert that a pure traversable structure (such as a list) is
 -- empty.
---
--- Defined in module `Test.TLT.Standard`.
 emptyP :: (Monad m, Traversable t) => t a -> Assertion m
 emptyP = liftAssertionPure null
            (\ _ -> "Expected empty structure but got non-empty")
 
 -- |Assert that a traversable structure (such as a list) returned from
 -- a computation is empty.
---
--- Defined in module `Test.TLT.Standard`.
 empty :: (Monad m, Traversable t) => m (t a) -> Assertion m
 empty = assertionPtoM emptyP
 
 -- |Assert that a pure traversable structure (such as a list) is
 -- nonempty.
---
--- Defined in module `Test.TLT.Standard`.
 nonemptyP :: (Monad m, Traversable t) => t a -> Assertion m
 nonemptyP = liftAssertionPure (not . null)
               (\ _ -> "Expected non-empty structure but got empty")
 
 -- |Assert that a traversable structure (such as a list) returned from
 -- a computation is non-empty.
---
--- Defined in module `Test.TLT.Standard`.
 nonempty :: (Monad m, Traversable t) => m (t a) -> Assertion m
 nonempty = assertionPtoM nonemptyP
 
 -- |Assert that a `Maybe` value is `Nothing`.
---
--- Defined in module `Test.TLT.Standard`.
 nothingP :: Monad m => Maybe a -> Assertion m
 nothingP = liftAssertionPure isNothing
            (\ _ -> "Expected empty Maybe value but got non-Nothing")
 
 -- |Assert that a `Maybe` result ofa computation is `Nothing`.
---
--- Defined in module `Test.TLT.Standard`.
 nothing :: Monad m => m (Maybe a) -> Assertion m
 nothing = assertionPtoM nothingP

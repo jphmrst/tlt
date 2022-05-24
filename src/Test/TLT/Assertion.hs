@@ -25,27 +25,19 @@ import Test.TLT.Class
 -- `TLT`) which returns a list of zero of more reasons for the failure
 -- of the assertion.  A successful computation returns an empty list:
 -- no reasons for failure, hence success.
---
--- Defined in module `Test.TLT.Assertion`.
 type Assertion m = m [TestFail]
 
 -- |This assertion always fails with the given message.
---
--- Defined in module `Test.TLT.Assertion`.
 assertFailed :: Monad m => String -> Assertion m
 assertFailed msg = return [Asserted msg]
 
 -- |This assertion always succeeds.
---
--- Defined in module `Test.TLT.Assertion`.
 assertSuccess :: Monad m => Assertion m
 assertSuccess = return []
 
 infix 0 ~:, ~::, ~::-
 
 -- |Label and perform a test of an `Assertion`.
---
--- Defined in module `Test.TLT.Assertion`.
 --
 -- ===== Example
 --
@@ -60,8 +52,6 @@ s ~: a = do
   liftTLT $ TLT $ put (opts, addResult oldState $ Test s assessment)
 
 -- |Label and perform a test of a (pure) boolean value.
---
--- Defined in module `Test.TLT.Assertion`.
 --
 -- ===== Example
 --
@@ -81,8 +71,6 @@ s ~::- b = do
 -- |Label and perform a test of a boolean value returned by a
 -- computation in the wrapped monad @m@.
 --
--- Defined in module `Test.TLT.Assertion`.
---
 -- ===== Example
 --
 -- > test :: Monad m => TLT m ()
@@ -100,8 +88,6 @@ s ~:: bM = do
 -- |Transform a binary function on an expected and an actual value
 -- (plus a binary generator of a failure message) into an `Assertion`
 -- for a pure given actual value.
---
--- Defined in module `Test.TLT.Assertion`.
 --
 -- ===== Example
 --
@@ -125,8 +111,6 @@ liftAssertion2Pure tester explainer exp actual = return $
 -- lift it to an `Assertion` expecting the actual value to be returned
 -- from a computation.
 --
--- Defined in module `Test.TLT.Assertion`.
---
 -- ===== Examples
 --
 -- The TLT assertion `Test.TLT.(@==)` lifts `Test.TLT.(@==-)` (both
@@ -143,8 +127,6 @@ assertion2PtoM pa exp actualM = do actual <- actualM
 -- |Transform a binary function on expected and actual values (plus
 -- a generator of a failure message) into an `Assertion` where the
 -- actual value is to be returned from a subcomputation.
---
--- Defined in module `Test.TLT.Assertion`.
 liftAssertion2M ::
   (Monad m) => (a -> a -> Bool) -> (a -> a -> String) -> a -> m a -> Assertion m
 liftAssertion2M tester explainer exp actualM =
@@ -155,8 +137,6 @@ liftAssertion2M tester explainer exp actualM =
 -- |Transform a unary function on a value (plus a generator of a
 -- failure message) into a unary function returning an `Assertion` for
 -- a pure given actual value.
---
--- Defined in module `Test.TLT.Assertion`.
 --
 -- ===== Example
 --
@@ -176,8 +156,6 @@ liftAssertionPure tester explainer actual = return $
 -- |Given an `Assertion` for a pure (actual) value, lift it to an
 -- `Assertion` expecting the value to be returned from a computation.
 --
--- Defined in module `Test.TLT.Assertion`.
---
 -- ===== Example
 --
 -- The TLT assertion `Test.TLT.empty` (defined in `Test.TLT.Standard`)
@@ -193,8 +171,6 @@ assertionPtoM pa actualM = do actual <- actualM
 -- |Transform a unary function on an actual value (plus a generator of
 -- a failure message) into an `Assertion` where the value is to be
 -- returned from a subcomputation.
---
--- Defined in module `Test.TLT.Assertion`.
 liftAssertionM ::
   (Monad m) => (a -> Bool) -> (a -> String) -> m a -> Assertion m
 liftAssertionM tester explainer actualM =

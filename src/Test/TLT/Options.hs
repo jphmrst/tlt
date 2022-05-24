@@ -16,26 +16,18 @@ module Test.TLT.Options where
 
 -- |Record of options which may be specified for running and reporting
 -- TLT tests.
---
--- Defined in module `Test.TLT.Options`.
 data TLTopts = TLTopts {
   optShowPasses :: Bool,
   optQuitAfterFailReport :: Bool
 }
 
 -- |Default initial options.
---
--- Defined in `Test.TLT.Options`.
 defaultOpts = TLTopts False True
 
 -- |Update the display of showing passes in a `TLTopts` record.
---
--- Defined in `Test.TLT.Options`.
 withShowPasses :: TLTopts -> Bool -> TLTopts
 withShowPasses (TLTopts _ f) b = TLTopts b f
 
 -- |Update the display of showing passes in a `TLTopts` record.
---
--- Defined in `Test.TLT.Options`.
 withExitAfterFail :: TLTopts -> Bool -> TLTopts
 withExitAfterFail (TLTopts p _) b = TLTopts p b
