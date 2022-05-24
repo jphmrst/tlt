@@ -97,8 +97,8 @@ instance (MonadTLT m n, Monoid w) => MonadTLT (WS.WriterT w m) n where
 -- package.  If you are using TLT itself as your test framework, and
 -- wishing to see its human-oriented output directly, consider using
 -- `Test.TLT.tlt` instead.
-tltCore :: Monad m => TLT m r -> m (TLTopts, [TestResult])
-tltCore (TLT t) = do
+runTLT :: Monad m => TLT m r -> m (TLTopts, [TestResult])
+runTLT (TLT t) = do
   (_, (opts, resultsBuf)) <- runStateT t $ (defaultOpts, Top 0 0 [])
   return (opts, closeTRBuf resultsBuf)
 

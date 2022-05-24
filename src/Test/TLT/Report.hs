@@ -33,11 +33,11 @@ import Test.TLT.Class
 --
 -- When using TLT from some other package (as opposed to using TLT
 -- itself as your test framework, and wishing to see its
--- human-oriented output directly), consider using `tltCore` instead.
+-- human-oriented output directly), consider using `runTLT` instead.
 tlt :: MonadIO m => TLT m r -> m ()
 tlt tlt = do
   liftIO $ putStrLn "Running tests:"
-  (opts, results) <- tltCore tlt
+  (opts, results) <- runTLT tlt
   liftIO $ report opts $ results
 
 -- |Report the results of tests.
