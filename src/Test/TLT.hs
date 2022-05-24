@@ -70,6 +70,7 @@ import qualified Control.Monad.Trans.Writer.Lazy as WL
 import qualified Control.Monad.Trans.Writer.Strict as WS
 import System.Console.ANSI
 import System.Exit
+import Test.TLT.Options
 import Test.TLT.Results
 
 -- |An assertion is a computation (typically in the monad wrapped by
@@ -168,24 +169,6 @@ popGroup trb@(Buf acc _ _ _ _) = addResult acc $ currentGroup trb
 closeTRBuf :: TRBuf -> [TestResult]
 closeTRBuf (Top _ _ ts) = reverse ts
 closeTRBuf b = closeTRBuf $ popGroup b
-
--- |Record of options which may be specified for running and reporting
--- TLT tests.
-data TLTopts = TLTopts {
-  optShowPasses :: Bool,
-  optQuitAfterFailReport :: Bool
-}
-
--- |Default initial options
-defaultOpts = TLTopts False True
-
--- |Update the display of showing passes in a `TLTopts` record.
-withShowPasses :: TLTopts -> Bool -> TLTopts
-withShowPasses (TLTopts _ f) b = TLTopts b f
-
--- |Update the display of showing passes in a `TLTopts` record.
-withExitAfterFail :: TLTopts -> Bool -> TLTopts
-withExitAfterFail (TLTopts p _) b = TLTopts p b
 
 -- |Synonym for the elements of the `TLT` state.
 type TLTstate = (TLTopts, TRBuf)
