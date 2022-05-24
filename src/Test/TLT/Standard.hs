@@ -153,6 +153,6 @@ nothingP :: Monad m => Maybe a -> Assertion m
 nothingP = liftAssertionPure isNothing
            (\ _ -> "Expected empty Maybe value but got non-Nothing")
 
--- |Assert that a `Maybe` result ofa computation is `Nothing`.
+-- |Assert that a `Maybe` result of a computation is `Nothing`.
 nothing :: Monad m => m (Maybe a) -> Assertion m
 nothing = assertionPtoM nothingP
