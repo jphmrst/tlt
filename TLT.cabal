@@ -30,6 +30,7 @@ library
       Test.TLT
       Test.TLT.Buffer
       Test.TLT.Options
+      Test.TLT.Report
       Test.TLT.Results
   other-modules:
       Paths_TLT
