@@ -28,6 +28,7 @@ source-repository head
 library
   exposed-modules:
       Test.TLT
+      Test.TLT.Results
   other-modules:
       Paths_TLT
   hs-source-dirs:

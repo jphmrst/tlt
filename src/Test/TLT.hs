@@ -70,49 +70,13 @@ import qualified Control.Monad.Trans.Writer.Lazy as WL
 import qualified Control.Monad.Trans.Writer.Strict as WS
 import System.Console.ANSI
 import System.Exit
-
--- * Results of tests
-
--- |Reasons why a test might fail.
-data TestFail = Asserted String
-                -- ^ A failure arising from an `Assertion` which is not met.
-              | Erred String
-                -- ^ A failure associated with a call to a Haskell
-                -- function triggering an error.
-
-formatFail :: TestFail -> String
-formatFail (Asserted s) = s
-formatFail (Erred s) = "Assertion raised exception: " ++ s
+import Test.TLT.Results
 
 -- |An assertion is a computation (typically in the monad wrapped by
 -- `TLT`) which returns a list of zero of more reasons for the failure
 -- of the assertion.  A successful computation returns an empty list:
 -- no reasons for failure, hence success.
 type Assertion m = m [TestFail]
-
--- |Hierarchical structure holding the result of running tests,
--- possibly grouped into tests.
-data TestResult = Test String [TestFail]
-                | Group String Int Int [TestResult]
-                  -- ^ The `Int`s are respectively the total number of
-                  -- tests executed, and total number of failures
-                  -- detected.
-
--- |Return the number of failed tests reported in a `TestResult`.
-failCount :: TestResult -> Int
-failCount (Test _ []) = 0
-failCount (Test _ _) = 1
-failCount (Group _ _ n _) = n
-
-testCount :: TestResult -> Int
-testCount (Test _ _) = 1
-testCount (Group _ n _ _) = n
-
-totalFailCount :: [TestResult] -> Int
-totalFailCount = foldr (+) 0 . map failCount
-
-totalTestCount :: [TestResult] -> Int
-totalTestCount = foldr (+) 0 . map testCount
 
 -- |Report the results of tests.
 report :: TLTopts -> [TestResult] -> IO ()
