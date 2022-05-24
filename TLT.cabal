@@ -28,10 +28,13 @@ source-repository head
 library
   exposed-modules:
       Test.TLT
+      Test.TLT.Assertion
       Test.TLT.Buffer
+      Test.TLT.Class
       Test.TLT.Options
       Test.TLT.Report
       Test.TLT.Results
+      Test.TLT.Standard
   other-modules:
       Paths_TLT
   hs-source-dirs:

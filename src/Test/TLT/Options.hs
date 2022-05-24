@@ -16,6 +16,8 @@ module Test.TLT.Options where
 
 -- |Record of options which may be specified for running and reporting
 -- TLT tests.
+--
+-- Defined in module `Test.TLT.Options`.
 data TLTopts = TLTopts {
   optShowPasses :: Bool,
   optQuitAfterFailReport :: Bool
