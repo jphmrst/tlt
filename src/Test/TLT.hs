@@ -14,11 +14,20 @@ tests to be specified in some sort of formal list of tests.  Rather,
 tests are simply commands in a monad stack which includes the
 transformer layer @Test.TLT@.
 
+This module is a re-exporter for the various @Test.TLT.*@
+modules which define distinct portions of the TLT system.  These
+exports are oriented towards the simple use of TLT as a test
+framework.  When using TLT more programmatically, such as when
+integrating TLT into another test framework, it may be necessary
+to import the more internally-oriented functions of the
+individual modules.
+
 -}
 
 module Test.TLT (
+
   -- * The TLT transformer
-  TLT, tlt, MonadTLT, liftTLT, tltCore,
+  TLT, tlt, MonadTLT, liftTLT,
   -- ** Session options
   reportAllTestResults, setExitAfterFailDisplay,
   -- * Writing tests
