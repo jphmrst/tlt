@@ -28,7 +28,7 @@ GitHub repository <https://github.com/jphmrst/TLT/>.
 
 module Test.TLT (
   -- * The TLT transformer
-  TLT, tlt, MonadTLT, liftTLT,
+  TLT, tlt, MonadTLT, liftTLT, tltCore,
   -- ** Session options
   reportAllTestResults, setExitAfterFailDisplay,
   -- * Writing tests
@@ -281,12 +281,28 @@ instance (MonadTLT m n, Monoid w) => MonadTLT (WS.WriterT w m) n where
 {- ------------------------------------------------------------ -}
 
 -- |Execute the tests specified in a `TLT` monad, and report the
--- results.
+-- results as text output.
+--
+-- When using TLT from some other package (as opposed to using TLT
+-- itself as your test framework, and wishing to see its
+-- human-oriented output directly), consider using `tltCore` instead.
 tlt :: MonadIO m => TLT m r -> m ()
-tlt (TLT t) = do
+tlt tlt = do
   liftIO $ putStrLn "Running tests:"
+  (opts, results) <- tltCore tlt
+  liftIO $ report opts $ results
+
+-- |Execute the tests specified in a `TLT` monad without output
+-- side-effects, returning the final options and result reports.
+--
+-- This function is primarily useful when calling TLT from some other
+-- package.  If you are using TLT itself as your test framework, and
+-- wishing to see its human-oriented output directly, consider using
+-- `tlt` instead.
+tltCore :: MonadIO m => TLT m r -> m (TLTopts, [TestResult])
+tltCore (TLT t) = do
   (_, (opts, resultsBuf)) <- runStateT t $ (defaultOpts, Top 0 0 [])
-  liftIO $ report opts $ closeTRBuf resultsBuf
+  return (opts, closeTRBuf resultsBuf)
 
 -- |This function controls whether `tlt` will report only tests which
 -- fail, suppressing any display of tests which pass, or else report
