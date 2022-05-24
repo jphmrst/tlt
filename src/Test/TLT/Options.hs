@@ -12,13 +12,6 @@ for more information.
 
 -}
 
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE FunctionalDependencies #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-
 module Test.TLT.Options where
 
 -- |Record of options which may be specified for running and reporting
@@ -28,13 +21,19 @@ data TLTopts = TLTopts {
   optQuitAfterFailReport :: Bool
 }
 
--- |Default initial options
+-- |Default initial options.
+--
+-- Defined in `Test.TLT.Options`.
 defaultOpts = TLTopts False True
 
 -- |Update the display of showing passes in a `TLTopts` record.
+--
+-- Defined in `Test.TLT.Options`.
 withShowPasses :: TLTopts -> Bool -> TLTopts
 withShowPasses (TLTopts _ f) b = TLTopts b f
 
 -- |Update the display of showing passes in a `TLTopts` record.
+--
+-- Defined in `Test.TLT.Options`.
 withExitAfterFail :: TLTopts -> Bool -> TLTopts
 withExitAfterFail (TLTopts p _) b = TLTopts p b

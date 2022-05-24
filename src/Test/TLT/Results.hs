@@ -12,24 +12,19 @@ for more information.
 
 -}
 
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE FunctionalDependencies #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-
 module Test.TLT.Results where
 
 -- * Results of tests
 
 -- |Reasons why a test might fail.
 data TestFail = Asserted String
-                -- ^ A failure arising from an `Assertion` which is not met.
+                -- ^ A failure arising from an `Test.TLT.Assertion`
+                -- which is not met.
               | Erred String
                 -- ^ A failure associated with a call to a Haskell
                 -- function triggering an error.
 
+-- |Default conversion of a `TestFail` to a descriptive string.
 formatFail :: TestFail -> String
 formatFail (Asserted s) = s
 formatFail (Erred s) = "Assertion raised exception: " ++ s
@@ -48,12 +43,16 @@ failCount (Test _ []) = 0
 failCount (Test _ _) = 1
 failCount (Group _ _ n _) = n
 
+-- |Return the number of tests described by a `TestResult`.
 testCount :: TestResult -> Int
 testCount (Test _ _) = 1
 testCount (Group _ n _ _) = n
 
+-- |Return the number of failed tests described in a list of
+-- `TestResult`s.
 totalFailCount :: [TestResult] -> Int
 totalFailCount = foldr (+) 0 . map failCount
 
+-- |Return the number of tests described in a list of `TestResult`s.
 totalTestCount :: [TestResult] -> Int
 totalTestCount = foldr (+) 0 . map testCount
