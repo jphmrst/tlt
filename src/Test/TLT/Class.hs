@@ -15,6 +15,7 @@ Main state and monad definitions for the @TLT@ testing system.  See
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Test.TLT.Class where
@@ -42,7 +43,7 @@ type TLTstate = (TLTopts, TRBuf)
 
 -- |Monad transformer for TLT tests.  This layer stores the results
 -- from tests as they are executed.
-newtype Monad m => TLT m r = TLT { unwrap :: StateT TLTstate m r }
+newtype {- Monad m => -} TLT (m :: * -> *) r = TLT { unwrap :: StateT TLTstate m r }
   deriving (Functor, Applicative, Monad, MonadTrans)
 
 -- |Extending `TLT` operations across other monad transformers.  For
