@@ -22,9 +22,11 @@ module Test.TLT.Class where
 
 import Control.Exception
 import Control.Monad
+import Control.Monad.Except
 import Control.Monad.ST.Trans
 import Control.Monad.Trans.Class
 -- import Control.Monad.Trans.Either
+import Control.Monad.Trans.Except
 import Control.Monad.Trans.Free
 import Control.Monad.Trans.Identity
 import Control.Monad.Trans.Maybe
@@ -79,6 +81,9 @@ instance MonadTLT m n => MonadTLT (ResourceT m) n where
 instance MonadTLT m n => MonadTLT (StateT s m) n where
   liftTLT = lift . liftTLT
 
+instance MonadTLT m n => MonadTLT (ExceptT e m) n where
+  liftTLT = lift . liftTLT
+
 instance MonadTLT m n => MonadTLT (SL.StateT s m) n where
   liftTLT = lift . liftTLT
 
@@ -90,6 +95,82 @@ instance (MonadTLT m n, Monoid w) => MonadTLT (WL.WriterT w m) n where
 
 instance (MonadTLT m n, Monoid w) => MonadTLT (WS.WriterT w m) n where
   liftTLT = lift . liftTLT
+
+{- --------------------------------------------------------------- -}
+
+-- | Enabling TLT checking of the completion of computations with- or
+-- without uncaught exceptions in a (possibly embedded) `ExceptT` or
+-- `Except` monad.
+--
+-- In general, it is more difficult to automatically deduce
+-- @MonadTLTExcept@ instances than @MonadTLT@ because `runToExcept`
+-- instances bodies will frequently require additional parameters to
+-- functions such as `runReaderT`, or values corresponding to
+-- `Nothing`, which are specific to a particular scenario.
+--
+-- Note that using @MonadTLTExcept@ imposes the restriction that the
+-- `TLT` transformer layer must be wrapped within the `ExceptT`
+-- transformer layer.
+class (MonadTLT m nt, Monad m, MonadTLT ne nt) => MonadTLTExcept m e nt ne
+      | m -> e, m -> ne where
+  liftTLTExcept :: ExceptT e ne a -> m a
+  runToExcept :: m a -> ExceptT e ne a
+
+instance MonadTLT m nt => MonadTLTExcept (ExceptT e m) e nt m where
+  liftTLTExcept = id
+  runToExcept = id
+
+{-
+-- I don't understand the FreeT transformer well enough to build this.
+instance (MonadTLTExcept m e nt ne, Functor f) =>
+         MonadTLTExcept (FreeT f m) e nt ne where
+  liftTLTExcept = lift . liftTLTExcept
+  runToExcept = ???
+-}
+
+instance MonadTLTExcept m e nt ne => MonadTLTExcept (IdentityT m) e nt ne where
+  liftTLTExcept = lift . liftTLTExcept
+  runToExcept = runToExcept . runIdentityT
+
+{-
+instance (MonadTLTExcept m e nt ne) =>
+         MonadTLTExcept (MaybeT m) e nt ne where
+  liftTLTExcept = lift . liftTLTExcept
+  runToExcept m = runToExcept $ do res <- runMaybeT m
+                                   case res of
+                                     Nothing -> return "???"
+                                     Just j -> return j
+
+instance MonadTLTExcept m e nt ne => MonadTLTExcept (ReaderT r m) e nt ne where
+  liftTLTExcept = lift . liftTLTExcept
+
+instance MonadTLTExcept m e nt ne => MonadTLTExcept (ResourceT m) e nt ne where
+  liftTLTExcept = lift . liftTLTExcept
+
+instance MonadTLTExcept m e nt ne =>
+         MonadTLTExcept (SL.StateT s m) e nt ne where
+  liftTLTExcept = lift . liftTLTExcept
+
+instance MonadTLTExcept m e nt ne => MonadTLTExcept (STT s m) e nt ne where
+  liftTLTExcept = lift . liftTLTExcept
+  runToExcept = runToExcept . runSTT
+-}
+
+-- | The `runToExcept` function in this case simply discards any
+-- output.
+instance (MonadTLTExcept m e nt ne, Monoid w) =>
+         MonadTLTExcept (WL.WriterT w m) e nt ne where
+  liftTLTExcept = lift . liftTLTExcept
+  runToExcept m = runToExcept $ do (res, _) <- WL.runWriterT m
+                                   return res
+
+-- | The `runToExcept` function in this case simply discards any
+-- output.
+instance (MonadTLTExcept m e nt ne, Monoid w) =>
+         MonadTLTExcept (WS.WriterT w m) e nt ne where
+  liftTLTExcept = lift . liftTLTExcept
+  runToExcept m = runToExcept $ do (res, _) <- WS.runWriterT m
+                                   return res
 
 -- |Execute the tests specified in a `TLT` monad without output
 -- side-effects, returning the final options and result reports.
@@ -131,6 +212,13 @@ desc `tltFail` detail = liftTLT $ TLT $ do
   let after = addResult before $ Test desc [Asserted detail]
   put (opts, after)
 
+-- |Report a success.  Useful in default cases.
+tltPass :: MonadTLT m n => String -> m ()
+tltPass desc = liftTLT $ TLT $ do
+  (opts, before) <- get
+  let after = addResult before $ Test desc []
+  put (opts, after)
+
 -- |Organize the tests in the given subcomputation as a separate group
 -- within the test results we will report.
 inGroup :: MonadTLT m n => String -> m a -> m a
@@ -141,3 +229,26 @@ inGroup name group = do
   (opts', after) <- liftTLT $ TLT $ get
   liftTLT $ TLT $ put $ (opts', popGroup after)
   return result
+
+-- | Ensure that a computation in `ExceptT` completes without an
+-- uncaught exception.
+noUncaught :: MonadTLTExcept m e nt ne => String -> m a -> m ()
+noUncaught loc m = do
+  let label = "No uncaught exception from " ++ loc
+  liftTLTExcept $ catchE (do runToExcept m
+                             tltPass label)
+                         (\_ -> label `tltFail` "Uncaught exception")
+
+-- | Ensure that a computation in `ExceptT` does throw an uncaught
+-- exception, allowing further testing of the exception.
+uncaughtWith ::
+  (MonadTLTExcept m e nt ne) => String -> m a -> (e -> ExceptT e ne ()) -> m ()
+uncaughtWith loc m handler =
+  liftTLTExcept $ catchE (do runToExcept m
+                             ("Expected uncaught exception from " ++ loc)
+                               `tltFail` "Did not throw exception")
+                         handler
+
+-- | Ensure that a computation in `ExceptT` does throw an uncaught
+-- exception.
+uncaught loc m = uncaughtWith loc m $ \_ -> return ()

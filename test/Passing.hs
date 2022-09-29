@@ -4,13 +4,16 @@
 {-# LANGUAGE UndecidableInstances #-}
 
 import Test.TLT
+import Control.Monad.Trans.Except
 import Control.Monad.Trans.Identity
 import Control.Monad.Trans
+import Control.Monad
 
 main :: IO ()
 main = do
   tlt test
   tlt ttest
+  tlt $ runExceptT extest
 
 test :: Monad m => TLT m ()
 test = do
@@ -82,3 +85,18 @@ m2tests = M2T $ do
   "5 is 5 as pure assertion" ~: 5 @==- 5
   "6 is 6 as pure assertion" ~: 6 @==- 6
 
+extest :: ExceptT String (TLT IO) ()
+extest = do
+  noUncaught "extest1" $ do
+    "6 is 6 as pure assertion" ~: 6 @==- 6
+    "7 is 7 as pure assertion" ~: 7 @==- 7
+  uncaught "extest2" $ do
+    "8 is 8 as pure assertion" ~: 8 @==- 8
+    throwE "Boom"
+    "9 is 9 as pure assertion" ~: 9 @==- 9
+  uncaughtWith "extest3" (do "10 is 10 as pure assertion" ~: 10 @==- 10
+                             throwE "Boom"
+                             "11 is 11 as pure assertion" ~: 11 @==- 11) h
+
+  where h :: String -> ExceptT String (TLT IO) ()
+        h e = "The exception should be \"Boom\"" ~: "Boom" @==- e

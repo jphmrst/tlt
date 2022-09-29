@@ -15,6 +15,7 @@ Standard assertion vocabulary for the @TLT@ testing system.  See
 module Test.TLT.Standard where
 import Data.Maybe
 import Test.TLT.Assertion
+import Control.Monad.Trans.Except
 
 infix 1 @==,  @/=,  @<,  @>,  @<=,  @>=
 infix 1 @==-, @/=-, @<-, @>-, @<=-, @>=-
