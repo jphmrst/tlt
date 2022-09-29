@@ -5,7 +5,7 @@ cabal-version: 1.12
 -- see: https://github.com/sol/hpack
 
 name:           TLT
-version:        0.3.0.0
+version:        0.4.0.0
 synopsis:       Testing in monads and transformers without explicit specs
 description:    A quick-and-dirty unit test system without test specifications, motivated by easy examination of intermediate results of computations in monad transformers.  See the GitHub repository <https://github.com/jphmrst/TLT/> for documentation, or the Haddock page for additional examples.
 category:       Test

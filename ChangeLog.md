@@ -1,5 +1,10 @@
 # Changelog for TLT
 
+- 0.4.0 :: Adding a class, instance declarations, and functions for
+  inspecting exceptions thrown from an `ExceptT` transformer layer.
+  
+  Corrections to the Haddock documentation.
+
 - 0.3.0 :: Significant refactoring, organizing the contents of the
   module @Test.TLT@ into submodules, with @Test.TLT@ only re-exporting
   the core functionality.
