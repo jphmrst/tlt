@@ -84,11 +84,38 @@ the `TLT` computation housing its tests.  Groups have impact only in
 terms of organizing the output you see in the final report of tests
 run.
 
-Finally, it is straightforward to write new `Assertion`s for
-project-specific test criteria: they are simply functions returning
-monadic values.  There are several functions in the final section of
-this document which transform pure predicates into `Assertion`s, or
-which transform one form of `Assertion` into another.
+It is straightforward to write new `Assertion`s for project-specific
+test criteria: they are simply functions returning monadic values.
+There are several functions in the final section of this document
+which transform pure predicates into `Assertion`s, or which transform
+one form of `Assertion` into another.
+
+There are also special forms for validating the normal termination of
+computations including an `ExceptT` monad transformer layer:
+
+ - `noUncaught` and `noUncaught_` each take an `ExceptT` computation
+   (which may itself contain additional TLT tests) as an argument, and
+   expects that computation to finish without finding an uncaught
+   exception thrown from it.  The `noUncaught` function requires the
+   exception type to be an instance of `Show`; the `noUncaught_`
+   function operates on any exception.
+
+ - `uncaught` also takes an `ExceptT` computation as an argument, but
+   does expects it to throw an uncaught exception.  This computation
+   may contain additional TLT tests, but it should be noted that any
+   tests which would have been executed after a `throwE` will either
+   be executed, nor be recorded for test result reporting.
+
+ - `uncaughtWith` is like `uncaught`, but takes an additional function
+   argument which receives the thrown exception for additional
+   examination.
+   
+These three functions generally require a declaration of an instance
+of `MonadTLTExcept` for the monadic type under test.  This class
+decribes the relationship among the overall monad stack, the `ExceptT`
+layer with it, and the TLT transformer within the `ExceptT` layer.
+With these inclusion requirements, these functions do require a more
+specific monad stack structure than the rest of TLT.
 
 # Examples
 
@@ -221,3 +248,47 @@ It is not necessary, for example, to harvest test declarations
 from the executions of the `MnT`s for assembly into an overall
 test declaration.
 
+## Testing with exceptions
+
+These tests will pass:
+
+    do
+      noUncaught "extest1" $ do
+        "6 is 6 as pure assertion" ~: 6 @==- 6
+        "7 is 7 as pure assertion" ~: 7 @==- 7
+      uncaught "extest2" $ do
+        "8 is 8 as pure assertion" ~: 8 @==- 8
+        throwE "Boom"
+        "9 is 9 as pure assertion" ~: 9 @==- 9
+      uncaughtWith "extest3"
+	    (do "10 is 10 as pure assertion" ~: 10 @==- 10
+            throwE "Boom"
+            11 is 11 as pure assertion" ~: 11 @==- 11) h
+        (\e -> "The exception should be \"Boom\""
+                 ~: "Boom" @==- e)
+
+This test will fail because it expects no thrown exceptions, but does
+observe one:
+
+    noUncaught "extest1x" $ do
+      "6 is 6 as pure assertion" ~: 6 @==- 6
+      throwE "Boom"
+      "7 is 7 as pure assertion" ~: 7 @==- 7
+
+This test will fail because it expects a thrown exception, but the
+subcomputation ends normally:
+
+    uncaught "extest2x" $ do
+      "8 is 8 as pure assertion" ~: 8 @==- 8
+      "9 is 9 as pure assertion" ~: 9 @==- 9
+
+Finally, this test will record an error 
+against `"The exception should be \"Boom\""`,
+although no error will be logged against `"extest3x"`
+since only the absence of an exception would be logged at that point.
+
+    uncaughtWith "extest3x"
+	  (do throwE "Bang"
+          "10 is 10 as pure assertion" ~: 10 @==- 10
+          "11 is 11 as pure assertion" ~: 11 @==- 11)
+	  (\e -> lift ("The exception should be \"Boom\"" ~: "Boom" @==- e)

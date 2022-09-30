@@ -146,8 +146,13 @@ module Test.TLT (
   -- first argument of each is a @TLT@ monad of tests which has been
   -- declared to take an `ExceptT` layer.
   --
-  --  [`noUncaught`]: Asserts that /no/ uncaught exceptions should be
-  --  thrown from its argument computation, and fails if one is.
+  --  [`noUncaught` and `noUncaught_`]: Both assert that /no/ uncaught
+  --  exceptions should be thrown from its argument computation, and
+  --  fails if one is.  The `noUncaught_` function accepts any type of
+  --  exception, but cannot report any details about them except that
+  --  /something/ was thrown.  The `noUncaught` function demands that
+  --  the exception type be of class `Show`, and does report exception
+  --  details in the case of failure.
   --
   --  [`uncaught`]: Asserts that an uncaught exception /should/ be
   --  thrown from its argument computation, and fails if none are
@@ -167,7 +172,7 @@ module Test.TLT (
   -- functions, are all below.
 
   -- * The TLT transformer
-  TLT, MonadTLT, liftTLT,
+  TLT, MonadTLT(liftTLT),
   -- ** Session options
   reportAllTestResults, setExitAfterFailDisplay,
 
@@ -193,8 +198,8 @@ module Test.TLT (
   -- *** Binary assertions
   liftAssertion2Pure, assertion2PtoM, liftAssertion2M,
   -- * Dealing with exceptions in an `ExceptT` layer
-  MonadTLTExcept, liftTLTExcept, runToExcept,
-  noUncaught, uncaught, uncaughtWith
+  MonadTLTExcept(liftTLTExcept, runToExcept),
+  noUncaught, noUncaught_, uncaught, uncaughtWith
 
   ) where
 

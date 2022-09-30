@@ -94,9 +94,9 @@ extest = do
     "8 is 8 as pure assertion" ~: 8 @==- 8
     throwE "Boom"
     "9 is 9 as pure assertion" ~: 9 @==- 9
-  uncaughtWith "extest3" (do "10 is 10 as pure assertion" ~: 10 @==- 10
-                             throwE "Boom"
-                             "11 is 11 as pure assertion" ~: 11 @==- 11) h
-
-  where h :: String -> ExceptT String (TLT IO) ()
-        h e = "The exception should be \"Boom\"" ~: "Boom" @==- e
+  uncaughtWith "extest3"
+    (do "10 is 10 as pure assertion" ~: 10 @==- 10
+        throwE "Boom"
+        "11 is 11 as pure assertion" ~: 11 @==- 11)
+    (\e -> "The exception should be \"Boom\""
+             ~: "Boom" @==- e)

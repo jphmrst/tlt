@@ -1,5 +1,10 @@
 # Changelog for TLT
 
+- 0.5.0 :: Add a variation of @noUncaught@ to disguish @Show@ and
+  non-@Show@ exception types in TLT failure reporting.
+  
+  Various improvement to the documentation.
+
 - 0.4.0 :: Adding a class, instance declarations, and functions for
   inspecting exceptions thrown from an `ExceptT` transformer layer.
   
