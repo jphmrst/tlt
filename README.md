@@ -7,7 +7,9 @@ Tests can live in an arbitrary monad transformer so long as the `TLT`
 transformer is part of the stack.  Some control of the results display
 is available.
 
-See also the TLT Haddock page for additional examples.
+See also the TLT Haddock page for additional examples (linked from the
+`Test/TLT` module on 
+[TLT's Hackage entry](https://hackage.haskell.org/package/TLT)).
 
 # Overview
 
