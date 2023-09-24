@@ -42,16 +42,20 @@ import Test.TLT.Results
 import Test.TLT.Buffer
 
 -- |Synonym for the elements of the `TLT` state.
-data TLTstate = TLTstate {
+data TLTstate (m :: * -> *) = TLTstate {
   tltStateOptions :: TLTopts,
-  tltStateAccum :: TRBuf
+  tltStateAccum :: TRBuf,
+  tltStateExceptionHandler :: String -> m ()
   }
 
 -- |Monad transformer for TLT tests.  This layer stores the results
 -- from tests as they are executed.
 newtype {- Monad m => -} TLT (m :: * -> *) r =
-  TLT { unwrap :: StateT TLTstate m r }
-    deriving (Functor, Applicative, Monad, MonadTrans)
+  TLT { unwrap :: StateT (TLTstate m) m r }
+    deriving (Functor, Applicative, Monad)
+
+-- Not able to autoderive this one.
+instance MonadTrans TLT where lift = TLT . lift
 
 -- |Extending `TLT` operations across other monad transformers.  For
 -- easiest and most flexible testing, declare the monad transformers
@@ -114,7 +118,8 @@ runTLT :: Monad m => TLT m r -> m (TLTopts, [TestResult])
 runTLT (TLT t) = do
   (_, state) <- runStateT t $ TLTstate {
     tltStateOptions = defaultOpts,
-    tltStateAccum = Top 0 0 []
+    tltStateAccum = Top 0 0 [],
+    tltStateExceptionHandler = (\_ -> return ())
     }
   return (tltStateOptions state, closeTRBuf $ tltStateAccum state)
 
