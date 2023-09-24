@@ -47,9 +47,11 @@ infix 0 ~:, ~::, ~::-
 -- >   "2 not 3" ~: 2 @/=- 3                   -- This test fails.
 (~:) :: MonadTLT m n => String -> Assertion m -> m ()
 s ~: a = do
-  (opts, oldState) <- liftTLT $ TLT $ get
+  state <- liftTLT $ TLT $ get
   assessment <- a
-  liftTLT $ TLT $ put (opts, addResult oldState $ Test s assessment)
+  liftTLT $ TLT $ put $
+    state { tltStateAccum =
+              addResult (tltStateAccum state) $ Test s assessment }
 
 -- |Label and perform a test of a (pure) boolean value.
 --
@@ -64,9 +66,12 @@ s ~: a = do
 -- >                                                  -- returns True.
 (~::-) :: MonadTLT m n => String -> Bool -> m ()
 s ~::- b = do
-  (opts, oldState) <- liftTLT $ TLT $ get
-  liftTLT $ TLT $ put (opts, addResult oldState $ Test s $
-        if b then [] else [Asserted $ "Expected True but got False"])
+  state <- liftTLT $ TLT $ get
+  liftTLT $ TLT $ put $
+    state { tltStateAccum =
+            addResult (tltStateAccum state) $ Test s $
+              if b then [] else [Asserted $ "Expected True but got False"]
+          }
 
 -- |Label and perform a test of a boolean value returned by a
 -- computation in the wrapped monad @m@.
@@ -81,9 +86,11 @@ s ~::- b = do
 (~::) :: MonadTLT m n => String -> m Bool -> m ()
 s ~:: bM = do
   b <- bM
-  (opts, oldState) <- liftTLT $ TLT $ get
-  liftTLT $ TLT $ put (opts, addResult oldState $ Test s $
-        if b then [] else [Asserted $ "Expected True but got False"])
+  state <- liftTLT $ TLT $ get
+  liftTLT $ TLT $ put $
+    state { tltStateAccum =
+              addResult (tltStateAccum state) $ Test s $
+                if b then [] else [Asserted $ "Expected True but got False"] }
 
 -- |Transform a binary function on an expected and an actual value
 -- (plus a binary generator of a failure message) into an `Assertion`

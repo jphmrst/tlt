@@ -24,6 +24,7 @@ import Control.Exception
 import Control.Monad
 import Control.Monad.Except
 import Control.Monad.ST.Trans
+import Control.Monad.IO.Class
 import Control.Monad.Trans.Class
 -- import Control.Monad.Trans.Either
 import Control.Monad.Trans.Except
@@ -41,12 +42,16 @@ import Test.TLT.Results
 import Test.TLT.Buffer
 
 -- |Synonym for the elements of the `TLT` state.
-type TLTstate = (TLTopts, TRBuf)
+data TLTstate = TLTstate {
+  tltStateOptions :: TLTopts,
+  tltStateAccum :: TRBuf
+  }
 
 -- |Monad transformer for TLT tests.  This layer stores the results
 -- from tests as they are executed.
-newtype {- Monad m => -} TLT (m :: * -> *) r = TLT { unwrap :: StateT TLTstate m r }
-  deriving (Functor, Applicative, Monad, MonadTrans)
+newtype {- Monad m => -} TLT (m :: * -> *) r =
+  TLT { unwrap :: StateT TLTstate m r }
+    deriving (Functor, Applicative, Monad, MonadTrans)
 
 -- |Extending `TLT` operations across other monad transformers.  For
 -- easiest and most flexible testing, declare the monad transformers
@@ -107,8 +112,11 @@ instance (MonadTLT m n, Monoid w) => MonadTLT (WS.WriterT w m) n where
 -- `Test.TLT.tlt` instead.
 runTLT :: Monad m => TLT m r -> m (TLTopts, [TestResult])
 runTLT (TLT t) = do
-  (_, (opts, resultsBuf)) <- runStateT t $ (defaultOpts, Top 0 0 [])
-  return (opts, closeTRBuf resultsBuf)
+  (_, state) <- runStateT t $ TLTstate {
+    tltStateOptions = defaultOpts,
+    tltStateAccum = Top 0 0 []
+    }
+  return (tltStateOptions state, closeTRBuf $ tltStateAccum state)
 
 -- |This function controls whether `Test.TLT.tlt` will report only
 -- tests which fail, suppressing any display of tests which pass, or
@@ -117,8 +125,8 @@ runTLT (TLT t) = do
 -- bothered only with problems which need fixing.
 reportAllTestResults :: MonadTLT m n => Bool -> m ()
 reportAllTestResults b = liftTLT $ TLT $ do
-  (opts, tr) <- get
-  put $ (opts `withShowPasses` b, tr)
+  state <- get
+  put $ state { tltStateOptions = tltStateOptions state `withShowPasses` b }
 
 -- |This function controls whether the main `Test.TLT.tlt` executable
 -- should exit after displaying test results which include at least
@@ -127,33 +135,35 @@ reportAllTestResults b = liftTLT $ TLT $ do
 -- sense to run the latter parts only when the former parts all pass.
 setExitAfterFailDisplay :: MonadTLT m n => Bool -> m ()
 setExitAfterFailDisplay b = liftTLT $ TLT $ do
-  (opts, tr) <- get
-  put $ (opts `withExitAfterFail` b, tr)
+  state <- get
+  put $ state { tltStateOptions = tltStateOptions state `withExitAfterFail` b }
 
 -- |Report a failure.  Useful in pattern-matching cases which are
 -- entirely not expected.
 tltFail :: MonadTLT m n => String -> String -> m ()
 desc `tltFail` detail = liftTLT $ TLT $ do
-  (opts, before) <- get
-  let after = addResult before $ Test desc [Asserted detail]
-  put (opts, after)
+  state <- get
+  let after = addResult (tltStateAccum state) $ Test desc [Asserted detail]
+  put $ state { tltStateAccum = after }
 
 -- |Report a success.  Useful in default cases.
 tltPass :: MonadTLT m n => String -> m ()
 tltPass desc = liftTLT $ TLT $ do
-  (opts, before) <- get
-  let after = addResult before $ Test desc []
-  put (opts, after)
+  state <- get
+  let after = addResult (tltStateAccum state) $ Test desc []
+  put $ state { tltStateAccum = after }
 
 -- |Organize the tests in the given subcomputation as a separate group
 -- within the test results we will report.
 inGroup :: MonadTLT m n => String -> m a -> m a
 inGroup name group = do
-  (opts, before) <- liftTLT $ TLT get
-  liftTLT $ TLT $ put $ (opts, Buf before 0 0 name [])
+  state <- liftTLT $ TLT get
+  liftTLT $ TLT $ put $
+    state { tltStateAccum = Buf (tltStateAccum state) 0 0 name [] }
   result <- group
-  (opts', after) <- liftTLT $ TLT $ get
-  liftTLT $ TLT $ put $ (opts', popGroup after)
+  state' <- liftTLT $ TLT $ get
+  liftTLT $ TLT $ put $
+    state' { tltStateAccum = popGroup $ tltStateAccum state' }
   return result
 
 {- --------------------------------------------------------------- -}
@@ -273,3 +283,14 @@ uncaughtWith loc m handler =
 -- | Ensure that a computation in `ExceptT` does throw an uncaught
 -- exception.
 uncaught loc m = uncaughtWith loc m $ \_ -> return ()
+
+{-
+-- | Call prior to a series of TLT tests to detect general errors.
+-- Requires that the underlying computation be `MonadIO`.
+withIOErrorsByTLT :: MonadIO m => TLT m () -> TLT m ()
+withIOErrorsByTLT m = do
+  liftIO $ do
+    catch m $ \e -> do
+      error "TODO"
+
+-}
