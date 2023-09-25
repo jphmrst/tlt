@@ -46,5 +46,13 @@ test = do
                              "11 is 11 as pure assertion" ~: 11 @==- 11) h
   uncaughtWith "extest3x" (do "10 is 10 as pure assertion" ~: 10 @==- 10
                               "11 is 11 as pure assertion" ~: 11 @==- 11) h
+
+  inGroup "The error" $ do
+    "Call error" ~: error "boom"
+    {-
+    "Call error" ~:: error "boom"
+    "Call error" ~::- error "boom"
+    -}
+
   where h :: String -> ExceptT String (TLT IO) ()
         h e = lift ("The exception should be \"Boom\"" ~: "Boom" @==- e)

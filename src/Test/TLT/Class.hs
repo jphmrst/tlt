@@ -41,11 +41,24 @@ import Test.TLT.Options
 import Test.TLT.Results
 import Test.TLT.Buffer
 
+type Interceptor m =
+  String -> TLTstate m -> (m [TestFail] -> IO [TestFail]) -> m [TestFail] ->
+    IO (TLTstate m)
+
+-- | Call prior to a series of TLT tests to detect general errors.
+-- Requires that the underlying computation be `MonadIO`.
+interceptNothing :: Monad m => Interceptor m
+interceptNothing label state runner a = do
+  assessment <- runner a
+  return $ state { tltStateAccum =
+                     addResult (tltStateAccum state) $
+                       Test label assessment }
+
 -- |Synonym for the elements of the `TLT` state.
 data TLTstate (m :: * -> *) = TLTstate {
   tltStateOptions :: TLTopts,
   tltStateAccum :: TRBuf,
-  tltStateExceptionHandler :: String -> m ()
+  tltInterceptor :: Interceptor m
   }
 
 -- |Monad transformer for TLT tests.  This layer stores the results
@@ -119,7 +132,7 @@ runTLT (TLT t) = do
   (_, state) <- runStateT t $ TLTstate {
     tltStateOptions = defaultOpts,
     tltStateAccum = Top 0 0 [],
-    tltStateExceptionHandler = (\_ -> return ())
+    tltInterceptor = interceptNothing
     }
   return (tltStateOptions state, closeTRBuf $ tltStateAccum state)
 
@@ -170,6 +183,29 @@ inGroup name group = do
   liftTLT $ TLT $ put $
     state' { tltStateAccum = popGroup $ tltStateAccum state' }
   return result
+
+{- --------------------------------------------------------------- -}
+
+-- | Call prior to a series of TLT tests to detect general errors.
+-- Requires that the underlying computation be `MonadIO`.
+withIOErrorsByTLT :: (MonadTLT m n, MonadIO m, MonadIO n) => m ()
+withIOErrorsByTLT = liftTLT $ TLT $ do
+  state <- get
+  put $ state { tltInterceptor = interceptExceptions }
+
+-- | Call prior to a series of TLT tests to detect general errors.
+-- Requires that the underlying computation be `MonadIO`.
+interceptExceptions :: (MonadIO m) => Interceptor m
+interceptExceptions label state runner a =
+  catch (do assessment <- runner a
+            return $ state { tltStateAccum =
+                               addResult (tltStateAccum state) $
+                                 Test label assessment }) $
+    \e -> do
+      return $ state {
+        tltStateAccum =
+            addResult (tltStateAccum state) $
+              Test label [Erred $ show $ (e :: SomeException)] }
 
 {- --------------------------------------------------------------- -}
 
@@ -288,14 +324,3 @@ uncaughtWith loc m handler =
 -- | Ensure that a computation in `ExceptT` does throw an uncaught
 -- exception.
 uncaught loc m = uncaughtWith loc m $ \_ -> return ()
-
-{-
--- | Call prior to a series of TLT tests to detect general errors.
--- Requires that the underlying computation be `MonadIO`.
-withIOErrorsByTLT :: MonadIO m => TLT m () -> TLT m ()
-withIOErrorsByTLT m = do
-  liftIO $ do
-    catch m $ \e -> do
-      error "TODO"
-
--}

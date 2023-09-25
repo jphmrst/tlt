@@ -51,7 +51,8 @@ s ~: a = do
   assessment <- a
   liftTLT $ TLT $ put $
     state { tltStateAccum =
-              addResult (tltStateAccum state) $ Test s assessment }
+              addResult (tltStateAccum state) $
+                Test s assessment }
 
 -- |Label and perform a test of a (pure) boolean value.
 --
