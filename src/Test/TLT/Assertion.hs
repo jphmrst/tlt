@@ -50,8 +50,6 @@ infix 0 ~:, ~::, ~::-
 (~:) :: forall m n . MonadTLT m n => String -> Assertion m -> m ()
 s ~: a = do
   state <- liftTLT $ TLT $ get
-  let interceptor :: Interceptor n
-      interceptor = tltInterceptor state
   assessment <- a
   liftTLT $ TLT $ put $
     state { tltStateAccum =
