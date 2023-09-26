@@ -37,6 +37,7 @@ import Control.Monad.Trans.State.Strict
 import qualified Control.Monad.Trans.State.Lazy as SL
 import qualified Control.Monad.Trans.Writer.Lazy as WL
 import qualified Control.Monad.Trans.Writer.Strict as WS
+import Data.Kind (Type)
 import Test.TLT.Options
 import Test.TLT.Results
 import Test.TLT.Buffer
@@ -55,7 +56,7 @@ interceptNothing label state runner a = do
                        Test label assessment }
 
 -- |Synonym for the elements of the `TLT` state.
-data TLTstate (m :: * -> *) = TLTstate {
+data TLTstate (m :: Type -> Type) = TLTstate {
   tltStateOptions :: TLTopts,
   tltStateAccum :: TRBuf,
   tltInterceptor :: Interceptor m
@@ -63,7 +64,7 @@ data TLTstate (m :: * -> *) = TLTstate {
 
 -- |Monad transformer for TLT tests.  This layer stores the results
 -- from tests as they are executed.
-newtype {- Monad m => -} TLT (m :: * -> *) r =
+newtype {- Monad m => -} TLT (m :: Type -> Type) r =
   TLT { unwrap :: StateT (TLTstate m) m r }
     deriving (Functor, Applicative, Monad)
 
