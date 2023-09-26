@@ -19,7 +19,7 @@ on:
 jobs:
   linux:
     name: Haskell-CI - Linux - ${{ matrix.compiler }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-23.04
     timeout-minutes:
       60
     container:
