@@ -184,8 +184,7 @@ inGroup name group = do
 -- | Call prior to a series of TLT tests to detect general errors.
 -- Requires that the underlying computation be `MonadIO`.
 withIOErrorsByTLT ::
-  (MonadTLT m n, MonadIO m, MonadIO n) =>
-    (n [TestFail] -> IO [TestFail]) -> m ()
+  (MonadTLT m n, MonadIO n) => (n [TestFail] -> IO [TestFail]) -> m ()
 withIOErrorsByTLT runner = liftTLT $ TLT $ do
   state <- get
   put $ state { tltInterceptor = interceptExceptions runner }
