@@ -48,8 +48,6 @@ instance Monad m => Applicative (M1T m) where
     return (f v)
 instance Monad m => Monad (M1T m) where
   (M1T m) >>= f = M1T $ m >>= (unwrap1 . f)
-  (M1T m1) >> (M1T m2) = M1T $ m1 >> m2
-  return v = M1T $ return v
 instance MonadTrans M1T where lift = M1T . lift
 
 instance Monad m => Functor (M2T m) where
@@ -64,8 +62,6 @@ instance Monad m => Applicative (M2T m) where
     return (f v)
 instance Monad m => Monad (M2T m) where
   (M2T m) >>= f = M2T $ m >>= (unwrap2 . f)
-  (M2T m1) >> (M2T m2) = M2T $ m1 >> m2
-  return v = M2T $ return v
 instance MonadTrans M2T where lift = M2T . lift
 
 instance MonadTLT m n => MonadTLT (M1T m) n where
