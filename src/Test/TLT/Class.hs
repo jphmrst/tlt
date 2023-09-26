@@ -42,18 +42,12 @@ import Test.TLT.Options
 import Test.TLT.Results
 import Test.TLT.Buffer
 
-type Interceptor m =
-  String -> TLTstate m -> (m [TestFail] -> IO [TestFail]) -> m [TestFail] ->
-    IO (TLTstate m)
+type Interceptor m = m [TestFail] -> m [TestFail]
 
 -- | Call prior to a series of TLT tests to detect general errors.
 -- Requires that the underlying computation be `MonadIO`.
-interceptNothing :: Monad m => Interceptor m
-interceptNothing label state runner a = do
-  assessment <- runner a
-  return $ state { tltStateAccum =
-                     addResult (tltStateAccum state) $
-                       Test label assessment }
+interceptNothing :: Monad m => m [TestFail] -> m [TestFail]
+interceptNothing = id
 
 -- |Synonym for the elements of the `TLT` state.
 data TLTstate (m :: Type -> Type) = TLTstate {
@@ -189,24 +183,20 @@ inGroup name group = do
 
 -- | Call prior to a series of TLT tests to detect general errors.
 -- Requires that the underlying computation be `MonadIO`.
-withIOErrorsByTLT :: (MonadTLT m n, MonadIO m, MonadIO n) => m ()
-withIOErrorsByTLT = liftTLT $ TLT $ do
+withIOErrorsByTLT ::
+  (MonadTLT m n, MonadIO m, MonadIO n) =>
+    (n [TestFail] -> IO [TestFail]) -> m ()
+withIOErrorsByTLT runner = liftTLT $ TLT $ do
   state <- get
-  put $ state { tltInterceptor = interceptExceptions }
+  put $ state { tltInterceptor = interceptExceptions runner }
 
 -- | Call prior to a series of TLT tests to detect general errors.
 -- Requires that the underlying computation be `MonadIO`.
-interceptExceptions :: (MonadIO m) => Interceptor m
-interceptExceptions label state runner a =
-  catch (do assessment <- runner a
-            return $ state { tltStateAccum =
-                               addResult (tltStateAccum state) $
-                                 Test label assessment }) $
-    \e -> do
-      return $ state {
-        tltStateAccum =
-            addResult (tltStateAccum state) $
-              Test label [Erred $ show $ (e :: SomeException)] }
+interceptExceptions ::
+  (MonadIO m) => (m [TestFail] -> IO [TestFail]) -> Interceptor m
+interceptExceptions runner a =
+  liftIO $ catch (runner a) $
+    \e -> return $ [Erred $ show $ (e :: SomeException)]
 
 {- --------------------------------------------------------------- -}
 
