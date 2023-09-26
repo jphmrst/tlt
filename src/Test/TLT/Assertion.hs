@@ -12,6 +12,8 @@ for more information.
 
 -}
 
+{-# LANGUAGE ScopedTypeVariables #-}
+
 module Test.TLT.Assertion where
 
 import Control.Monad.Trans.State.Strict
@@ -45,9 +47,11 @@ infix 0 ~:, ~::, ~::-
 -- > test = do
 -- >   "2 is 2 as result" ~: 2 @== return 2    -- This test passes.
 -- >   "2 not 3" ~: 2 @/=- 3                   -- This test fails.
-(~:) :: MonadTLT m n => String -> Assertion m -> m ()
+(~:) :: forall m n . MonadTLT m n => String -> Assertion m -> m ()
 s ~: a = do
   state <- liftTLT $ TLT $ get
+  let interceptor :: Interceptor n
+      interceptor = tltInterceptor state
   assessment <- a
   liftTLT $ TLT $ put $
     state { tltStateAccum =
