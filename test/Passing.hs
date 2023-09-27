@@ -12,8 +12,10 @@ import Control.Monad
 main :: IO ()
 main = do
   tlt test
+  {-
   tlt ttest
   tlt $ runExceptT extest
+  -}
 
 test :: Monad m => TLT m ()
 test = do
@@ -64,6 +66,7 @@ instance Monad m => Monad (M2T m) where
   (M2T m) >>= f = M2T $ m >>= (unwrap2 . f)
 instance MonadTrans M2T where lift = M2T . lift
 
+{-
 instance MonadTLT m n => MonadTLT (M1T m) n where
   liftTLT = lift . liftTLT
 instance MonadTLT m n => MonadTLT (M2T m) n where
@@ -96,3 +99,4 @@ extest = do
         "11 is 11 as pure assertion" ~: 11 @==- 11)
     (\e -> "The exception should be \"Boom\""
              ~: "Boom" @==- e)
+-}

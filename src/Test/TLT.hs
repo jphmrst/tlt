@@ -172,7 +172,7 @@ module Test.TLT (
   -- functions, are all below.
 
   -- * The TLT transformer
-  TLT, MonadTLT(liftTLT),
+  TLT, -- MonadTLT(liftTLT),
   -- ** Session options
   reportAllTestResults, setExitAfterFailDisplay,
 
@@ -197,9 +197,9 @@ module Test.TLT (
   liftAssertionPure, assertionPtoM, liftAssertionM,
   -- *** Binary assertions
   liftAssertion2Pure, assertion2PtoM, liftAssertion2M,
-  -- * Dealing with exceptions in an `ExceptT` layer
-  MonadTLTExcept(liftTLTExcept, runToExcept),
-  noUncaught, noUncaught_, uncaught, uncaughtWith
+  -- -- * Dealing with exceptions in an `ExceptT` layer
+  -- MonadTLTExcept(liftTLTExcept, runToExcept),
+  -- noUncaught, noUncaught_, uncaught, uncaughtWith
 
   ) where
 

@@ -6,9 +6,10 @@ import Control.Monad
 
 main :: IO ()
 main = do
-  tlt $ runExceptT test
+  _ <- runExceptT $ tlt test
+  return ()
 
-test :: ExceptT String (TLT IO) ()
+test :: TLT (ExceptT String IO) ()
 test = do
   "True passes" ~::- True
   "2 is 3 as single Bool" ~::- 2 == 3
@@ -25,6 +26,8 @@ test = do
     "2 not 2" ~: 2 @/=- 2
   "2 not 3 as result" ~: 2 @/= return 3
   "2 not 2 as result" ~: 2 @/= return 2
+
+  {-
   noUncaught "extest1" $ do
     "6 is 6 as pure assertion" ~: 6 @==- 6
     "7 is 7 as pure assertion" ~: 7 @==- 7
@@ -46,6 +49,7 @@ test = do
                              "11 is 11 as pure assertion" ~: 11 @==- 11) h
   uncaughtWith "extest3x" (do "10 is 10 as pure assertion" ~: 10 @==- 10
                               "11 is 11 as pure assertion" ~: 11 @==- 11) h
+  -}
 
   inGroup "The error" $ do
     "Call error" ~: error "boom"

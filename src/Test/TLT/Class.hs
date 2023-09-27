@@ -66,6 +66,7 @@ newtype {- Monad m => -} TLT (m :: Type -> Type) r =
 -- Not able to autoderive this one.
 instance MonadTrans TLT where lift = TLT . lift
 
+{- ----------------------------------------------------------------------
 -- |Extending `TLT` operations across other monad transformers.  For
 -- easiest and most flexible testing, declare the monad transformers
 -- of your application as instances of this class.
@@ -113,6 +114,7 @@ instance (MonadTLT m n, Monoid w) => MonadTLT (WL.WriterT w m) n where
 
 instance (MonadTLT m n, Monoid w) => MonadTLT (WS.WriterT w m) n where
   liftTLT = lift . liftTLT
+---------------------------------------------------------------------- -}
 
 {- ----------------------------------------------------------------- -}
 
@@ -137,8 +139,8 @@ runTLT (TLT t) = do
 -- else report the results of all tests.  The default is the former:
 -- the idea is that no news should be good news, with the programmer
 -- bothered only with problems which need fixing.
-reportAllTestResults :: MonadTLT m n => Bool -> m ()
-reportAllTestResults b = liftTLT $ TLT $ do
+reportAllTestResults :: {- MonadTLT m n -} Monad m => Bool -> TLT m ()
+reportAllTestResults b = {- liftTLT $ -} TLT $ do
   state <- get
   put $ state { tltStateOptions = tltStateOptions state `withShowPasses` b }
 
@@ -147,40 +149,42 @@ reportAllTestResults b = liftTLT $ TLT $ do
 -- one failing test.  By default, it will exit in this situation.  The
 -- idea is that a test suite can be broken into parts when it makes
 -- sense to run the latter parts only when the former parts all pass.
-setExitAfterFailDisplay :: MonadTLT m n => Bool -> m ()
-setExitAfterFailDisplay b = liftTLT $ TLT $ do
+setExitAfterFailDisplay :: {- MonadTLT m n -} Monad m => Bool -> TLT m ()
+setExitAfterFailDisplay b = {- liftTLT $ -} TLT $ do
   state <- get
   put $ state { tltStateOptions = tltStateOptions state `withExitAfterFail` b }
 
 -- |Report a failure.  Useful in pattern-matching cases which are
 -- entirely not expected.
-tltFail :: MonadTLT m n => String -> String -> m ()
-desc `tltFail` detail = liftTLT $ TLT $ do
+tltFail :: {- MonadTLT m n -} Monad m => String -> String -> TLT m ()
+desc `tltFail` detail = {- liftTLT $ -} TLT $ do
   state <- get
   let after = addResult (tltStateAccum state) $ Test desc [Asserted detail]
   put $ state { tltStateAccum = after }
 
 -- |Report a success.  Useful in default cases.
-tltPass :: MonadTLT m n => String -> m ()
-tltPass desc = liftTLT $ TLT $ do
+tltPass :: {- MonadTLT m n -} Monad m => String -> TLT m ()
+tltPass desc = {- liftTLT $ -} TLT $ do
   state <- get
   let after = addResult (tltStateAccum state) $ Test desc []
   put $ state { tltStateAccum = after }
 
 -- |Organize the tests in the given subcomputation as a separate group
 -- within the test results we will report.
-inGroup :: MonadTLT m n => String -> m a -> m a
+inGroup :: {- MonadTLT m n -} Monad m => String -> TLT m a -> TLT m a
 inGroup name group = do
-  state <- liftTLT $ TLT get
-  liftTLT $ TLT $ put $
+  state <- {- liftTLT $ -} TLT get
+  {- liftTLT $ -}
+  TLT $ put $
     state { tltStateAccum = Buf (tltStateAccum state) 0 0 name [] }
   result <- group
-  state' <- liftTLT $ TLT $ get
-  liftTLT $ TLT $ put $
+  state' <- {- liftTLT $ -} TLT $ get
+  {- liftTLT $ -}
+  TLT $ put $
     state' { tltStateAccum = popGroup $ tltStateAccum state' }
   return result
 
-{- --------------------------------------------------------------- -}
+{- ---------------------------------------------------------------
 
 -- | Call prior to a series of TLT tests to detect general errors.
 -- Requires that the underlying computation be `MonadIO`.
@@ -315,3 +319,4 @@ uncaughtWith loc m handler =
 -- | Ensure that a computation in `ExceptT` does throw an uncaught
 -- exception.
 uncaught loc m = uncaughtWith loc m $ \_ -> return ()
+---------------------------------------------------------------------- -}

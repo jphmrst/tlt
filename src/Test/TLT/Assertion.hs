@@ -47,15 +47,16 @@ infix 0 ~:, ~::, ~::-
 -- > test = do
 -- >   "2 is 2 as result" ~: 2 @== return 2    -- This test passes.
 -- >   "2 not 3" ~: 2 @/=- 3                   -- This test fails.
-(~:) :: forall m n . MonadTLT m n => String -> Assertion m -> m ()
+(~:) :: Monad m {- forall m n . MonadTLT m n -} => String -> Assertion (TLT m) -> TLT m ()
 s ~: a = do
-  state <- liftTLT $ TLT get
+  state <- {- liftTLT $ -} TLT get
   {-
   let -- interceptor :: m [TestFail] -> m [TestFail]
       interceptor = tltStateInterceptor state
   -}
   assessment <- {- interceptor -} a
-  liftTLT $ TLT $ put $
+  {- liftTLT $ -}
+  TLT $ put $
     state { tltStateAccum =
               addResult (tltStateAccum state) $
                 Test s assessment }
@@ -71,10 +72,11 @@ s ~: a = do
 -- >   "2 is 3!?" ~::- myFn 4 "Hammer"                -- Passes if myFn (which
 -- >                                                  -- must be monadic)
 -- >                                                  -- returns True.
-(~::-) :: MonadTLT m n => String -> Bool -> m ()
+(~::-) :: Monad m {- MonadTLT m n -} => String -> Bool -> TLT m ()
 s ~::- b = do
-  state <- liftTLT $ TLT $ get
-  liftTLT $ TLT $ put $
+  state <- {- liftTLT $ -} TLT $ get
+  {- liftTLT $ -}
+  TLT $ put $
     state { tltStateAccum =
             addResult (tltStateAccum state) $ Test s $
               if b then [] else [Asserted $ "Expected True but got False"]
@@ -90,11 +92,12 @@ s ~::- b = do
 -- >   "True passes" ~::- True               -- This test passes.
 -- >   "2 is 2 as single Bool" ~::- 2 == 2   -- This test passes.
 -- >   "2 is 3!?" ~::- 2 == 2                -- This test fails.
-(~::) :: MonadTLT m n => String -> m Bool -> m ()
+(~::) :: Monad m {- MonadTLT m n -} => String -> TLT m Bool -> TLT m ()
 s ~:: bM = do
   b <- bM
-  state <- liftTLT $ TLT $ get
-  liftTLT $ TLT $ put $
+  state <- {- liftTLT $ -} TLT $ get
+  {- liftTLT $ -}
+  TLT $ put $
     state { tltStateAccum =
               addResult (tltStateAccum state) $ Test s $
                 if b then [] else [Asserted $ "Expected True but got False"] }
