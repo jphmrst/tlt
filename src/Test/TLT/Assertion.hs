@@ -73,14 +73,9 @@ s ~: a = do
 -- >                                                  -- must be monadic)
 -- >                                                  -- returns True.
 (~::-) :: Monad m {- MonadTLT m n -} => String -> Bool -> TLT m ()
-s ~::- b = do
-  state <- {- liftTLT $ -} TLT $ get
-  {- liftTLT $ -}
-  TLT $ put $
-    state { tltStateAccum =
-            addResult (tltStateAccum state) $ Test s $
-              if b then [] else [Asserted $ "Expected True but got False"]
-          }
+s ~::- b = s ~:
+  return (if b then [] else [Asserted $ "Expected True but got False"])
+{-# INLINE (~::-) #-}
 
 -- |Label and perform a test of a boolean value returned by a
 -- computation in the wrapped monad @m@.
@@ -93,14 +88,12 @@ s ~::- b = do
 -- >   "2 is 2 as single Bool" ~::- 2 == 2   -- This test passes.
 -- >   "2 is 3!?" ~::- 2 == 2                -- This test fails.
 (~::) :: Monad m {- MonadTLT m n -} => String -> TLT m Bool -> TLT m ()
-s ~:: bM = do
-  b <- bM
-  state <- {- liftTLT $ -} TLT $ get
-  {- liftTLT $ -}
-  TLT $ put $
-    state { tltStateAccum =
-              addResult (tltStateAccum state) $ Test s $
-                if b then [] else [Asserted $ "Expected True but got False"] }
+s ~:: bM =
+  s ~: fmap (\b -> if b
+                   then []
+                   else [Asserted $ "Expected True but got False"])
+            bM
+{-# INLINE (~::) #-}
 
 -- |Transform a binary function on an expected and an actual value
 -- (plus a binary generator of a failure message) into an `Assertion`
