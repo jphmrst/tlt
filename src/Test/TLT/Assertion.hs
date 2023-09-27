@@ -49,8 +49,12 @@ infix 0 ~:, ~::, ~::-
 -- >   "2 not 3" ~: 2 @/=- 3                   -- This test fails.
 (~:) :: forall m n . MonadTLT m n => String -> Assertion m -> m ()
 s ~: a = do
-  state <- liftTLT $ TLT $ get
-  assessment <- a
+  state <- liftTLT $ TLT get
+  {-
+  let -- interceptor :: m [TestFail] -> m [TestFail]
+      interceptor = tltStateInterceptor state
+  -}
+  assessment <- {- interceptor -} a
   liftTLT $ TLT $ put $
     state { tltStateAccum =
               addResult (tltStateAccum state) $

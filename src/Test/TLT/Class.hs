@@ -13,6 +13,7 @@ Main state and monad definitions for the @TLT@ testing system.  See
 -}
 
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE KindSignatures #-}
@@ -53,7 +54,7 @@ interceptNothing = id
 data TLTstate (m :: Type -> Type) = TLTstate {
   tltStateOptions :: TLTopts,
   tltStateAccum :: TRBuf,
-  tltInterceptor :: Interceptor m
+  tltStateInterceptor :: Interceptor m
   }
 
 -- |Monad transformer for TLT tests.  This layer stores the results
@@ -127,7 +128,7 @@ runTLT (TLT t) = do
   (_, state) <- runStateT t $ TLTstate {
     tltStateOptions = defaultOpts,
     tltStateAccum = Top 0 0 [],
-    tltInterceptor = interceptNothing
+    tltStateInterceptor = interceptNothing
     }
   return (tltStateOptions state, closeTRBuf $ tltStateAccum state)
 
@@ -184,15 +185,15 @@ inGroup name group = do
 -- | Call prior to a series of TLT tests to detect general errors.
 -- Requires that the underlying computation be `MonadIO`.
 withIOErrorsByTLT ::
-  (MonadTLT m n, MonadIO n) => (n [TestFail] -> IO [TestFail]) -> m ()
-withIOErrorsByTLT runner = liftTLT $ TLT $ do
+  MonadIO m => (m [TestFail] -> IO [TestFail]) -> TLT m ()
+withIOErrorsByTLT runner = TLT $ do
   state <- get
-  put $ state { tltInterceptor = interceptExceptions runner }
+  put $ state { tltStateInterceptor = interceptExceptions runner }
 
 -- | Call prior to a series of TLT tests to detect general errors.
 -- Requires that the underlying computation be `MonadIO`.
 interceptExceptions ::
-  (MonadIO m) => (m [TestFail] -> IO [TestFail]) -> Interceptor m
+  MonadIO m => (m [TestFail] -> IO [TestFail]) -> Interceptor m
 interceptExceptions runner a =
   liftIO $ catch (runner a) $
     \e -> return $ [Erred $ show $ (e :: SomeException)]
