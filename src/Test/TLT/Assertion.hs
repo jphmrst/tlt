@@ -47,7 +47,9 @@ infix 0 ~:, ~::, ~::-
 -- > test = do
 -- >   "2 is 2 as result" ~: 2 @== return 2    -- This test passes.
 -- >   "2 not 3" ~: 2 @/=- 3                   -- This test fails.
-(~:) :: Monad m {- forall m n . MonadTLT m n -} => String -> Assertion (TLT m) -> TLT m ()
+(~:) ::
+  Monad m {- forall m n . MonadTLT m n -} =>
+    String -> Assertion (TLT m) -> TLT m ()
 s ~: a = do
   state <- {- liftTLT $ -} TLT get
   {-
@@ -113,7 +115,7 @@ s ~:: bM =
 -- second argument formats the detail reported when the assertion
 -- fails.
 liftAssertion2Pure ::
-  (Monad m) => (a -> a -> Bool) -> (a -> a -> String) -> a -> a -> Assertion m
+  Monad m => (a -> a -> Bool) -> (a -> a -> String) -> a -> a -> Assertion m
 liftAssertion2Pure tester explainer exp actual = return $
   if (tester exp actual) then [] else [Asserted $ explainer exp actual]
 
@@ -130,7 +132,7 @@ liftAssertion2Pure tester explainer exp actual = return $
 -- > (@==) :: (Monad m, Eq a, Show a) => a -> m a -> Assertion m
 -- > (@==) = assertion2PtoM (@==-)
 assertion2PtoM ::
-  (Monad m) => (a -> a -> Assertion m) -> a -> m a -> Assertion m
+  Monad m => (a -> a -> Assertion m) -> a -> m a -> Assertion m
 assertion2PtoM pa exp actualM = do actual <- actualM
                                    pa exp actual
 
@@ -138,7 +140,7 @@ assertion2PtoM pa exp actualM = do actual <- actualM
 -- a generator of a failure message) into an `Assertion` where the
 -- actual value is to be returned from a subcomputation.
 liftAssertion2M ::
-  (Monad m) => (a -> a -> Bool) -> (a -> a -> String) -> a -> m a -> Assertion m
+  Monad m => (a -> a -> Bool) -> (a -> a -> String) -> a -> m a -> Assertion m
 liftAssertion2M tester explainer exp actualM =
   let assertPure = liftAssertion2Pure tester explainer exp
   in do actual <- actualM
@@ -159,7 +161,7 @@ liftAssertion2M tester explainer exp actualM =
 -- >            (\ _ -> "Expected empty structure but got non-empty")
 
 liftAssertionPure ::
-  (Monad m) => (a -> Bool) -> (a -> String) -> a -> Assertion m
+  Monad m => (a -> Bool) -> (a -> String) -> a -> Assertion m
 liftAssertionPure tester explainer actual = return $
   if (tester actual) then [] else [Asserted $ explainer actual]
 
@@ -174,7 +176,7 @@ liftAssertionPure tester explainer actual = return $
 --
 -- > empty :: (Monad m, Traversable t) => m (t a) -> Assertion m
 -- > empty = assertionPtoM emptyP
-assertionPtoM :: (Monad m) => (a -> Assertion m) -> m a -> Assertion m
+assertionPtoM :: Monad m => (a -> Assertion m) -> m a -> Assertion m
 assertionPtoM pa actualM = do actual <- actualM
                               pa actual
 
@@ -182,7 +184,7 @@ assertionPtoM pa actualM = do actual <- actualM
 -- a failure message) into an `Assertion` where the value is to be
 -- returned from a subcomputation.
 liftAssertionM ::
-  (Monad m) => (a -> Bool) -> (a -> String) -> m a -> Assertion m
+  Monad m => (a -> Bool) -> (a -> String) -> m a -> Assertion m
 liftAssertionM tester explainer actualM =
   let assertPure = liftAssertionPure tester explainer
   in do actual <- actualM
