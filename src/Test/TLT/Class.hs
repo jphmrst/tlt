@@ -12,6 +12,7 @@ Main state and monad definitions for the @TLT@ testing system.  See
 
 -}
 
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -43,11 +44,11 @@ import Test.TLT.Options
 import Test.TLT.Results
 import Test.TLT.Buffer
 
-type Interceptor m = m [TestFail] -> m [TestFail]
+type Interceptor m = TLT m [TestFail] -> TLT m [TestFail]
 
 -- | Call prior to a series of TLT tests to detect general errors.
 -- Requires that the underlying computation be `MonadIO`.
-interceptNothing :: Monad m => m [TestFail] -> m [TestFail]
+interceptNothing :: Monad m => Interceptor m
 interceptNothing = id
 
 -- |Synonym for the elements of the `TLT` state.
@@ -61,7 +62,7 @@ data TLTstate (m :: Type -> Type) = TLTstate {
 -- from tests as they are executed.
 newtype {- Monad m => -} TLT (m :: Type -> Type) r =
   TLT { unwrap :: StateT (TLTstate m) m r }
-    deriving (Functor, Applicative, Monad)
+    deriving (Functor, Applicative, Monad, MonadIO)
 
 -- Not able to autoderive this one.
 instance MonadTrans TLT where lift = TLT . lift
@@ -134,6 +135,12 @@ runTLT (TLT t) = do
     }
   return (tltStateOptions state, closeTRBuf $ tltStateAccum state)
 
+runTLTtest :: Monad m => TLTstate m -> TLT m [TestFail] -> m [TestFail]
+runTLTtest s (TLT t) = do
+  (tfs, _) <- runStateT t s
+  return tfs
+
+
 -- |This function controls whether `Test.TLT.tlt` will report only
 -- tests which fail, suppressing any display of tests which pass, or
 -- else report the results of all tests.  The default is the former:
@@ -184,25 +191,33 @@ inGroup name group = do
     state' { tltStateAccum = popGroup $ tltStateAccum state' }
   return result
 
-{- ---------------------------------------------------------------
+{- --------------------------------------------------------------- -}
 
 -- | Call prior to a series of TLT tests to detect general errors.
 -- Requires that the underlying computation be `MonadIO`.
-withIOErrorsByTLT ::
-  MonadIO m => (m [TestFail] -> IO [TestFail]) -> TLT m ()
-withIOErrorsByTLT runner = TLT $ do
-  state <- get
-  put $ state { tltStateInterceptor = interceptExceptions runner }
+withTestIOErrorsByTLT :: forall m a .
+  MonadIO m => (m [TestFail] -> IO [TestFail]) -> TLT m a -> TLT m a
+withTestIOErrorsByTLT runner m = do
+  oldInterceptor <- TLT $ do
+    state <- get
+    let old :: Interceptor m
+        old = tltStateInterceptor state
+    put $ state { tltStateInterceptor = interceptExceptions runner }
+    return old
+  result <- m
+  -- TLT $ put $ state { tltStateInterceptor = oldInterceptor }
+  return result
 
 -- | Call prior to a series of TLT tests to detect general errors.
 -- Requires that the underlying computation be `MonadIO`.
 interceptExceptions ::
   MonadIO m => (m [TestFail] -> IO [TestFail]) -> Interceptor m
-interceptExceptions runner a =
-  liftIO $ catch (runner a) $
-    \e -> return $ [Erred $ show $ (e :: SomeException)]
+interceptExceptions runner a = do
+  state <- TLT $ get
+  liftIO $ catch (runner $ runTLTtest state a) $
+    \e -> return [Erred $ show $ (e :: SomeException)]
 
-{- --------------------------------------------------------------- -}
+{- ---------------------------------------------------------------
 
 -- | Enabling TLT checking of the completion of computations with- or
 -- without uncaught exceptions in a (possibly embedded) `ExceptT` or
