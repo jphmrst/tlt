@@ -12,6 +12,7 @@ Default results reporting for the @TLT@ testing system.  See
 
 -}
 
+{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -20,6 +21,7 @@ Default results reporting for the @TLT@ testing system.  See
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Test.TLT.Report where
+import Data.Kind (Type)
 import Control.Monad
 import Control.Monad.IO.Class
 import System.Console.ANSI
@@ -34,11 +36,11 @@ import Test.TLT.Class
 -- When using TLT from some other package (as opposed to using TLT
 -- itself as your test framework, and wishing to see its
 -- human-oriented output directly), consider using `runTLT` instead.
-tlt :: MonadIO m => TLT m r -> m ()
+tlt :: TLTReady m => TLT m r -> m ()
 tlt tlt = do
   liftIO $ putStrLn "Running tests:"
   (opts, results) <- runTLT tlt
-  liftIO $ report opts $ results
+  liftIO $ report opts results
 
 -- |Report the results of tests.
 report :: TLTopts -> [TestResult] -> IO ()

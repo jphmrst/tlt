@@ -8,6 +8,7 @@ import Control.Monad.Trans.Except
 import Control.Monad.Trans.Identity
 import Control.Monad.Trans
 import Control.Monad
+import Control.Monad.IO.Class
 
 main :: IO ()
 main = do
@@ -17,7 +18,7 @@ main = do
   tlt $ runExceptT extest
   -}
 
-test :: Monad m => TLT m ()
+test :: TLT IO ()
 test = do
   "True passes" ~::- True
   "2 is 2 as single Bool" ~::- 2 == 2

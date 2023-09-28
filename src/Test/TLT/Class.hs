@@ -13,6 +13,7 @@ Main state and monad definitions for the @TLT@ testing system.  See
 -}
 
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -44,78 +45,19 @@ import Test.TLT.Options
 import Test.TLT.Results
 import Test.TLT.Buffer
 
-type Interceptor m = TLT m [TestFail] -> TLT m [TestFail]
-
--- | Call prior to a series of TLT tests to detect general errors.
--- Requires that the underlying computation be `MonadIO`.
-interceptNothing :: Monad m => Interceptor m
-interceptNothing = id
-
 -- |Synonym for the elements of the `TLT` state.
 data TLTstate (m :: Type -> Type) = TLTstate {
   tltStateOptions :: TLTopts,
-  tltStateAccum :: TRBuf,
-  tltStateInterceptor :: Interceptor m
+  tltStateAccum :: TRBuf
   }
 
 -- |Monad transformer for TLT tests.  This layer stores the results
 -- from tests as they are executed.
-newtype {- Monad m => -} TLT (m :: Type -> Type) r =
-  TLT { unwrap :: StateT (TLTstate m) m r }
-    deriving (Functor, Applicative, Monad, MonadIO)
+newtype TLT (m :: Type -> Type) r = TLT { unwrap :: StateT (TLTstate m) m r }
+  deriving (Functor, Applicative, Monad, MonadIO)
 
 -- Not able to autoderive this one.
 instance MonadTrans TLT where lift = TLT . lift
-
-{- ----------------------------------------------------------------------
--- |Extending `TLT` operations across other monad transformers.  For
--- easiest and most flexible testing, declare the monad transformers
--- of your application as instances of this class.
-class (Monad m, Monad n) => MonadTLT m n | m -> n where
-  -- |Lift TLT operations within a monad transformer stack.  Note that
-  -- with enough transformer types included in this class, the
-  -- @liftTLT@ function should usually be unnecessary: the commands in
-  -- this module which actually configure testing, or specify a test,
-  -- already @liftTLT@ their own result.  So they will all act as
-  -- top-level transformers in @MonadTLT@.
-  liftTLT :: TLT n a -> m a
-
-instance Monad m => MonadTLT (TLT m) m where
-  liftTLT = id
-
-instance (MonadTLT m n, Functor f) => MonadTLT (FreeT f m) n where
-    liftTLT = lift . liftTLT
-
-instance MonadTLT m n => MonadTLT (IdentityT m) n where
-  liftTLT = lift . liftTLT
-
-instance MonadTLT m n => MonadTLT (MaybeT m) n where
-  liftTLT = lift . liftTLT
-
-instance MonadTLT m n => MonadTLT (ReaderT r m) n where
-  liftTLT = lift . liftTLT
-
-instance MonadTLT m n => MonadTLT (ResourceT m) n where
-  liftTLT = lift . liftTLT
-
-instance MonadTLT m n => MonadTLT (StateT s m) n where
-  liftTLT = lift . liftTLT
-
-instance MonadTLT m n => MonadTLT (ExceptT e m) n where
-  liftTLT = lift . liftTLT
-
-instance MonadTLT m n => MonadTLT (SL.StateT s m) n where
-  liftTLT = lift . liftTLT
-
-instance MonadTLT m n => MonadTLT (STT s m) n where
-  liftTLT = lift . liftTLT
-
-instance (MonadTLT m n, Monoid w) => MonadTLT (WL.WriterT w m) n where
-  liftTLT = lift . liftTLT
-
-instance (MonadTLT m n, Monoid w) => MonadTLT (WS.WriterT w m) n where
-  liftTLT = lift . liftTLT
----------------------------------------------------------------------- -}
 
 {- ----------------------------------------------------------------- -}
 
@@ -126,28 +68,26 @@ instance (MonadTLT m n, Monoid w) => MonadTLT (WS.WriterT w m) n where
 -- package.  If you are using TLT itself as your test framework, and
 -- wishing to see its human-oriented output directly, consider using
 -- `Test.TLT.tlt` instead.
-runTLT :: Monad m => TLT m r -> m (TLTopts, [TestResult])
+runTLT :: TLTReady m => TLT m r -> m (TLTopts, [TestResult])
 runTLT (TLT t) = do
   (_, state) <- runStateT t $ TLTstate {
     tltStateOptions = defaultOpts,
-    tltStateAccum = Top 0 0 [],
-    tltStateInterceptor = interceptNothing
+    tltStateAccum = Top 0 0 []
     }
   return (tltStateOptions state, closeTRBuf $ tltStateAccum state)
 
-runTLTtest :: Monad m => TLTstate m -> TLT m [TestFail] -> m [TestFail]
+runTLTtest :: MonadIO m => TLTstate m -> TLT m [TestFail] -> m [TestFail]
 runTLTtest s (TLT t) = do
   (tfs, _) <- runStateT t s
   return tfs
-
 
 -- |This function controls whether `Test.TLT.tlt` will report only
 -- tests which fail, suppressing any display of tests which pass, or
 -- else report the results of all tests.  The default is the former:
 -- the idea is that no news should be good news, with the programmer
 -- bothered only with problems which need fixing.
-reportAllTestResults :: {- MonadTLT m n -} Monad m => Bool -> TLT m ()
-reportAllTestResults b = {- liftTLT $ -} TLT $ do
+reportAllTestResults :: MonadIO m => Bool -> TLT m ()
+reportAllTestResults b = TLT $ do
   state <- get
   put $ state { tltStateOptions = tltStateOptions state `withShowPasses` b }
 
@@ -156,66 +96,99 @@ reportAllTestResults b = {- liftTLT $ -} TLT $ do
 -- one failing test.  By default, it will exit in this situation.  The
 -- idea is that a test suite can be broken into parts when it makes
 -- sense to run the latter parts only when the former parts all pass.
-setExitAfterFailDisplay :: {- MonadTLT m n -} Monad m => Bool -> TLT m ()
-setExitAfterFailDisplay b = {- liftTLT $ -} TLT $ do
+setExitAfterFailDisplay :: MonadIO m => Bool -> TLT m ()
+setExitAfterFailDisplay b = TLT $ do
   state <- get
   put $ state { tltStateOptions = tltStateOptions state `withExitAfterFail` b }
 
 -- |Report a failure.  Useful in pattern-matching cases which are
 -- entirely not expected.
-tltFail :: {- MonadTLT m n -} Monad m => String -> String -> TLT m ()
-desc `tltFail` detail = {- liftTLT $ -} TLT $ do
+tltFail :: MonadIO m => String -> String -> TLT m ()
+desc `tltFail` detail = TLT $ do
   state <- get
   let after = addResult (tltStateAccum state) $ Test desc [Asserted detail]
   put $ state { tltStateAccum = after }
 
 -- |Report a success.  Useful in default cases.
-tltPass :: {- MonadTLT m n -} Monad m => String -> TLT m ()
-tltPass desc = {- liftTLT $ -} TLT $ do
+tltPass :: MonadIO m => String -> TLT m ()
+tltPass desc = TLT $ do
   state <- get
   let after = addResult (tltStateAccum state) $ Test desc []
   put $ state { tltStateAccum = after }
 
 -- |Organize the tests in the given subcomputation as a separate group
 -- within the test results we will report.
-inGroup :: {- MonadTLT m n -} Monad m => String -> TLT m a -> TLT m a
+inGroup :: MonadIO m => String -> TLT m a -> TLT m a
 inGroup name group = do
-  state <- {- liftTLT $ -} TLT get
-  {- liftTLT $ -}
+  state <- TLT get
   TLT $ put $
     state { tltStateAccum = Buf (tltStateAccum state) 0 0 name [] }
   result <- group
-  state' <- {- liftTLT $ -} TLT $ get
-  {- liftTLT $ -}
+  state' <- TLT $ get
   TLT $ put $
     state' { tltStateAccum = popGroup $ tltStateAccum state' }
   return result
 
 {- --------------------------------------------------------------- -}
 
--- | Call prior to a series of TLT tests to detect general errors.
--- Requires that the underlying computation be `MonadIO`.
-withTestIOErrorsByTLT :: forall m a .
-  MonadIO m => (m [TestFail] -> IO [TestFail]) -> TLT m a -> TLT m a
-withTestIOErrorsByTLT runner m = do
-  oldInterceptor <- TLT $ do
-    state <- get
-    let old :: Interceptor m
-        old = tltStateInterceptor state
-    put $ state { tltStateInterceptor = interceptExceptions runner }
-    return old
-  result <- m
-  -- TLT $ put $ state { tltStateInterceptor = oldInterceptor }
-  return result
+-- | Class of monads which support TLT testings.
+class MonadIO m => TLTReady m where
+  -- | Run the `IO`-based computation of one test.
+  runForTest :: m [TestFail] -> IO [TestFail]
 
--- | Call prior to a series of TLT tests to detect general errors.
--- Requires that the underlying computation be `MonadIO`.
-interceptExceptions ::
-  MonadIO m => (m [TestFail] -> IO [TestFail]) -> Interceptor m
-interceptExceptions runner a = do
-  state <- TLT $ get
-  liftIO $ catch (runner $ runTLTtest state a) $
-    \e -> return [Erred $ show $ (e :: SomeException)]
+-- | An `IO` computation is the base case.
+instance TLTReady IO where runForTest = id
+
+-- | Inductive cases run the top layer, and recursively call
+-- `runForTest` on the next layer.
+instance TLTReady m => TLTReady (IdentityT m) where
+  runForTest = runForTest . runIdentityT
+
+-- | The exception case from an `ExceptT` run translates to a
+-- `TestFail` entry of an error..
+instance (Show e, TLTReady m) => TLTReady (ExceptT e m) where
+  runForTest = runForTest . fmap (\x -> case x of
+                                     Left l -> [Erred $ show l]
+                                     Right r -> r) . runExceptT
+
+-- | We take the `Nothing` case of a `MaybeT` as an ansence of
+-- failure.  Experience may show this to be wrong.
+instance TLTReady m => TLTReady (MaybeT m) where
+  runForTest = runForTest . fmap (\x -> case x of
+                                     Nothing -> []
+                                     Just x -> x) . runMaybeT
+
+{-
+instance TLTReady m => TLTReady (ReaderT r m) where
+  liftTLTExcept = lift . liftTLTExcept
+
+instance TLTReady m => TLTReady (ResourceT m) where
+  liftTLTExcept = lift . liftTLTExcept
+
+instance TLTReady m =>
+         TLTReady (SL.StateT s m) where
+  liftTLTExcept = lift . liftTLTExcept
+
+instance TLTReady m => TLTReady (STT s m) where
+  liftTLTExcept = lift . liftTLTExcept
+  runToExcept = runToExcept . runSTT
+
+-- | The `runToExcept` function in this case simply discards any
+-- output.
+instance (TLTReady m, Monoid w) =>
+         TLTReady (WL.WriterT w m) where
+  liftTLTExcept = lift . liftTLTExcept
+  runToExcept m = runToExcept $ do (res, _) <- WL.runWriterT m
+                                   return res
+
+-- | The `runToExcept` function in this case simply discards any
+-- output.
+instance (TLTReady m, Monoid w) =>
+         TLTReady (WS.WriterT w m) where
+  liftTLTExcept = lift . liftTLTExcept
+  runToExcept m = runToExcept $ do (res, _) <- WS.runWriterT m
+                                   return res
+-}
 
 {- ---------------------------------------------------------------
 

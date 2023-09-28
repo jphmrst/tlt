@@ -197,8 +197,7 @@ module Test.TLT (
   liftAssertionPure, assertionPtoM, liftAssertionM,
   -- *** Binary assertions
   liftAssertion2Pure, assertion2PtoM, liftAssertion2M,
-  -- * Dealing with exceptions
-  withTestIOErrorsByTLT
+  -- -- * Dealing with exceptions
   -- MonadTLTExcept(liftTLTExcept, runToExcept),
   -- noUncaught, noUncaught_, uncaught, uncaughtWith
 

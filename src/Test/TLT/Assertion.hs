@@ -16,7 +16,9 @@ for more information.
 
 module Test.TLT.Assertion where
 
+import Control.Exception
 import Control.Monad.Trans.State.Strict
+import Control.Monad.IO.Class
 import Test.TLT.Results
 import Test.TLT.Buffer
 import Test.TLT.Class
@@ -30,11 +32,11 @@ import Test.TLT.Class
 type Assertion m = m [TestFail]
 
 -- |This assertion always fails with the given message.
-assertFailed :: Monad m => String -> Assertion m
+assertFailed :: MonadIO m => String -> Assertion m
 assertFailed msg = return [Asserted msg]
 
 -- |This assertion always succeeds.
-assertSuccess :: Monad m => Assertion m
+assertSuccess :: MonadIO m => Assertion m
 assertSuccess = return []
 
 infix 0 ~:, ~::, ~::-
@@ -43,21 +45,16 @@ infix 0 ~:, ~::, ~::-
 --
 -- ===== Example
 --
--- > test :: Monad m => TLT m ()
+-- > test :: MonadIO m => TLT m ()
 -- > test = do
 -- >   "2 is 2 as result" ~: 2 @== return 2    -- This test passes.
 -- >   "2 not 3" ~: 2 @/=- 3                   -- This test fails.
-(~:) ::
-  Monad m {- forall m n . MonadTLT m n -} =>
-    String -> Assertion (TLT m) -> TLT m ()
+(~:) :: TLTReady m => String -> Assertion (TLT m) -> TLT m ()
 s ~: a = do
-  state <- {- liftTLT $ -} TLT get
-  {-
-  let -- interceptor :: m [TestFail] -> m [TestFail]
-      interceptor = tltStateInterceptor state
-  -}
-  assessment <- {- interceptor -} a
-  {- liftTLT $ -}
+  state <- TLT get
+  assessment <- TLT $ liftIO $ catch (do r <- runForTest $ runTLTtest state a
+                                         return $! r)
+    (\e -> return [Erred $ show (e :: SomeException)])
   TLT $ put $
     state { tltStateAccum =
               addResult (tltStateAccum state) $
@@ -67,14 +64,14 @@ s ~: a = do
 --
 -- ===== Example
 --
--- > test :: Monad m => TLT m ()
+-- > test :: MonadIO m => TLT m ()
 -- > test = do
 -- >   "True passes" ~::- return True                 -- This test passes.
 -- >   "2 is 2 as single Bool" ~::- return (2 == 2)   -- This test passes.
 -- >   "2 is 3!?" ~::- myFn 4 "Hammer"                -- Passes if myFn (which
 -- >                                                  -- must be monadic)
 -- >                                                  -- returns True.
-(~::-) :: Monad m {- MonadTLT m n -} => String -> Bool -> TLT m ()
+(~::-) :: TLTReady m => String -> Bool -> TLT m ()
 s ~::- b = s ~:
   return (if b then [] else [Asserted $ "Expected True but got False"])
 {-# INLINE (~::-) #-}
@@ -84,12 +81,12 @@ s ~::- b = s ~:
 --
 -- ===== Example
 --
--- > test :: Monad m => TLT m ()
+-- > test :: MonadIO m => TLT m ()
 -- > test = do
 -- >   "True passes" ~::- True               -- This test passes.
 -- >   "2 is 2 as single Bool" ~::- 2 == 2   -- This test passes.
 -- >   "2 is 3!?" ~::- 2 == 2                -- This test fails.
-(~::) :: Monad m {- MonadTLT m n -} => String -> TLT m Bool -> TLT m ()
+(~::) :: TLTReady m => String -> TLT m Bool -> TLT m ()
 s ~:: bM =
   s ~: fmap (\b -> if b
                    then []
@@ -106,7 +103,7 @@ s ~:: bM =
 -- TLT's scalar-testing operators like @\@==-@ are defined with this
 -- function:
 --
--- > (@==-) :: (Monad m, Eq a, Show a) => a -> a -> Assertion m
+-- > (@==-) :: (MonadIO m, Eq a, Show a) => a -> a -> Assertion m
 -- > (@==-) = liftAssertion2Pure (==) $
 -- >   \ exp actual -> "Expected " ++ show exp ++ " but got " ++ show actual
 --
@@ -115,7 +112,7 @@ s ~:: bM =
 -- second argument formats the detail reported when the assertion
 -- fails.
 liftAssertion2Pure ::
-  Monad m => (a -> a -> Bool) -> (a -> a -> String) -> a -> a -> Assertion m
+  MonadIO m => (a -> a -> Bool) -> (a -> a -> String) -> a -> a -> Assertion m
 liftAssertion2Pure tester explainer exp actual = return $
   if (tester exp actual) then [] else [Asserted $ explainer exp actual]
 
@@ -129,10 +126,10 @@ liftAssertion2Pure tester explainer exp actual = return $
 -- defined in `Test.TLT.Standard`) from expecting a pure actual result
 -- to expecting a computation returning a value to test.
 --
--- > (@==) :: (Monad m, Eq a, Show a) => a -> m a -> Assertion m
+-- > (@==) :: (MonadIO m, Eq a, Show a) => a -> m a -> Assertion m
 -- > (@==) = assertion2PtoM (@==-)
 assertion2PtoM ::
-  Monad m => (a -> a -> Assertion m) -> a -> m a -> Assertion m
+  MonadIO m => (a -> a -> Assertion m) -> a -> m a -> Assertion m
 assertion2PtoM pa exp actualM = do actual <- actualM
                                    pa exp actual
 
@@ -140,7 +137,7 @@ assertion2PtoM pa exp actualM = do actual <- actualM
 -- a generator of a failure message) into an `Assertion` where the
 -- actual value is to be returned from a subcomputation.
 liftAssertion2M ::
-  Monad m => (a -> a -> Bool) -> (a -> a -> String) -> a -> m a -> Assertion m
+  MonadIO m => (a -> a -> Bool) -> (a -> a -> String) -> a -> m a -> Assertion m
 liftAssertion2M tester explainer exp actualM =
   let assertPure = liftAssertion2Pure tester explainer exp
   in do actual <- actualM
@@ -156,12 +153,12 @@ liftAssertion2M tester explainer exp actualM =
 -- `Test.TLT.Standard`) is built from the `Traversable` predicate
 -- `null`
 --
--- > emptyP :: (Monad m, Traversable t) => t a -> Assertion m
+-- > emptyP :: (MonadIO m, Traversable t) => t a -> Assertion m
 -- > emptyP = liftAssertionPure null
 -- >            (\ _ -> "Expected empty structure but got non-empty")
 
 liftAssertionPure ::
-  Monad m => (a -> Bool) -> (a -> String) -> a -> Assertion m
+  MonadIO m => (a -> Bool) -> (a -> String) -> a -> Assertion m
 liftAssertionPure tester explainer actual = return $
   if (tester actual) then [] else [Asserted $ explainer actual]
 
@@ -174,9 +171,9 @@ liftAssertionPure tester explainer actual = return $
 -- on monadic computations returning lists is defined in terms of the
 -- corresponging assertion on pure list-valued expressions.
 --
--- > empty :: (Monad m, Traversable t) => m (t a) -> Assertion m
+-- > empty :: (MonadIO m, Traversable t) => m (t a) -> Assertion m
 -- > empty = assertionPtoM emptyP
-assertionPtoM :: Monad m => (a -> Assertion m) -> m a -> Assertion m
+assertionPtoM :: MonadIO m => (a -> Assertion m) -> m a -> Assertion m
 assertionPtoM pa actualM = do actual <- actualM
                               pa actual
 
@@ -184,7 +181,7 @@ assertionPtoM pa actualM = do actual <- actualM
 -- a failure message) into an `Assertion` where the value is to be
 -- returned from a subcomputation.
 liftAssertionM ::
-  Monad m => (a -> Bool) -> (a -> String) -> m a -> Assertion m
+  MonadIO m => (a -> Bool) -> (a -> String) -> m a -> Assertion m
 liftAssertionM tester explainer actualM =
   let assertPure = liftAssertionPure tester explainer
   in do actual <- actualM
