@@ -12,12 +12,6 @@ Main state and monad definitions for the @TLT@ testing system.  See
 
 -}
 
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
@@ -76,6 +70,7 @@ runTLT (TLT t) = do
     }
   return (tltStateOptions state, closeTRBuf $ tltStateAccum state)
 
+-- | Prepare to execute one test in the monad wrapped for tests.
 runTLTtest :: MonadIO m => TLTstate m -> TLT m [TestFail] -> m [TestFail]
 runTLTtest s (TLT t) = do
   (tfs, _) <- runStateT t s
@@ -132,6 +127,14 @@ inGroup name group = do
 {- --------------------------------------------------------------- -}
 
 -- | Class of monads which support TLT testings.
+--
+-- Some standard classes do not have built-in instances:
+-- `Control.Monad.Trans.Reader.runReaderT`,
+-- `Control.Monad.Trans.State.Lazy.runStateT`, and
+-- `Control.Monad.Trans.State.Strict.runStateT` all require an
+-- argument of the initial internal state type; `runSTT` requires its
+-- argument to be universally quantified over the state thread dummy
+-- type, which we do not have in this class signature.
 class MonadIO m => TLTReady m where
   -- | Run the `IO`-based computation of one test.
   runForTest :: m [TestFail] -> IO [TestFail]
@@ -139,141 +142,31 @@ class MonadIO m => TLTReady m where
 -- | An `IO` computation is the base case.
 instance TLTReady IO where runForTest = id
 
--- | Inductive cases run the top layer, and recursively call
--- `runForTest` on the next layer.
 instance TLTReady m => TLTReady (IdentityT m) where
   runForTest = runForTest . runIdentityT
 
--- | The exception case from an `ExceptT` run translates to a
--- `TestFail` entry of an error..
 instance (Show e, TLTReady m) => TLTReady (ExceptT e m) where
   runForTest = runForTest . fmap (\x -> case x of
                                      Left l -> [Erred $ show l]
                                      Right r -> r) . runExceptT
 
--- | We take the `Nothing` case of a `MaybeT` as an ansence of
--- failure.  Experience may show this to be wrong.
 instance TLTReady m => TLTReady (MaybeT m) where
   runForTest = runForTest . fmap (\x -> case x of
                                      Nothing -> []
                                      Just x -> x) . runMaybeT
 
-{-
-instance TLTReady m => TLTReady (ReaderT r m) where
-  liftTLTExcept = lift . liftTLTExcept
-
-instance TLTReady m => TLTReady (ResourceT m) where
-  liftTLTExcept = lift . liftTLTExcept
-
-instance TLTReady m =>
-         TLTReady (SL.StateT s m) where
-  liftTLTExcept = lift . liftTLTExcept
-
-instance TLTReady m => TLTReady (STT s m) where
-  liftTLTExcept = lift . liftTLTExcept
-  runToExcept = runToExcept . runSTT
-
--- | The `runToExcept` function in this case simply discards any
--- output.
 instance (TLTReady m, Monoid w) =>
          TLTReady (WL.WriterT w m) where
-  liftTLTExcept = lift . liftTLTExcept
-  runToExcept m = runToExcept $ do (res, _) <- WL.runWriterT m
-                                   return res
+  runForTest = runForTest . fmap (\(a,_) -> a) . WL.runWriterT
 
--- | The `runToExcept` function in this case simply discards any
--- output.
 instance (TLTReady m, Monoid w) =>
          TLTReady (WS.WriterT w m) where
-  liftTLTExcept = lift . liftTLTExcept
-  runToExcept m = runToExcept $ do (res, _) <- WS.runWriterT m
-                                   return res
--}
+  runForTest = runForTest . fmap (\(a,_) -> a) . WS.runWriterT
+
+instance (TLTReady m, MonadUnliftIO m) => TLTReady (ResourceT m) where
+  runForTest = runForTest . runResourceT
 
 {- ---------------------------------------------------------------
-
--- | Enabling TLT checking of the completion of computations with- or
--- without uncaught exceptions in a (possibly embedded) `ExceptT` or
--- `Except` monad.
---
--- In general, it is more difficult to automatically deduce
--- @MonadTLTExcept@ instances than @MonadTLT@ because `runToExcept`
--- instances bodies will frequently require additional parameters to
--- functions such as `runReaderT`, or values corresponding to
--- `Nothing`, which are specific to a particular scenario.
---
--- Note that using @MonadTLTExcept@ imposes the restriction that the
--- `TLT` transformer layer must be wrapped within the `ExceptT`
--- transformer layer.
-class (MonadTLT m nt, Monad m, MonadTLT ne nt) => MonadTLTExcept m e nt ne
-      | m -> e, m -> ne where
-  -- | Encodes how an embedded `ExceptT` monad can be lifted to the
-  -- top-level monad stack type @m@.
-  liftTLTExcept :: ExceptT e ne a -> m a
-  -- | Runs the layers of the monad stack above the `ExceptT` layer,
-  -- exposing that latter layer.  Serves as an inverse of
-  -- `liftTLTExcept`.
-  runToExcept :: m a -> ExceptT e ne a
-
--- | The `ExceptT` instance is a base case; here the lift/run
--- functions are simply `id`.
-instance MonadTLT m nt => MonadTLTExcept (ExceptT e m) e nt m where
-  liftTLTExcept = id
-  runToExcept = id
-
-{-
--- I don't understand the FreeT transformer well enough to build this.
-instance (MonadTLTExcept m e nt ne, Functor f) =>
-         MonadTLTExcept (FreeT f m) e nt ne where
-  liftTLTExcept = lift . liftTLTExcept
-  runToExcept = ???
--}
-
--- | We can infer general instances for other monad transformer types
--- when their @run@ function does not take some initializing argument.
-instance MonadTLTExcept m e nt ne => MonadTLTExcept (IdentityT m) e nt ne where
-  liftTLTExcept = lift . liftTLTExcept
-  runToExcept = runToExcept . runIdentityT
-
-{-
-instance (MonadTLTExcept m e nt ne) =>
-         MonadTLTExcept (MaybeT m) e nt ne where
-  liftTLTExcept = lift . liftTLTExcept
-  runToExcept m = runToExcept $ do res <- runMaybeT m
-                                   case res of
-                                     Nothing -> return "???"
-                                     Just j -> return j
-
-instance MonadTLTExcept m e nt ne => MonadTLTExcept (ReaderT r m) e nt ne where
-  liftTLTExcept = lift . liftTLTExcept
-
-instance MonadTLTExcept m e nt ne => MonadTLTExcept (ResourceT m) e nt ne where
-  liftTLTExcept = lift . liftTLTExcept
-
-instance MonadTLTExcept m e nt ne =>
-         MonadTLTExcept (SL.StateT s m) e nt ne where
-  liftTLTExcept = lift . liftTLTExcept
-
-instance MonadTLTExcept m e nt ne => MonadTLTExcept (STT s m) e nt ne where
-  liftTLTExcept = lift . liftTLTExcept
-  runToExcept = runToExcept . runSTT
--}
-
--- | The `runToExcept` function in this case simply discards any
--- output.
-instance (MonadTLTExcept m e nt ne, Monoid w) =>
-         MonadTLTExcept (WL.WriterT w m) e nt ne where
-  liftTLTExcept = lift . liftTLTExcept
-  runToExcept m = runToExcept $ do (res, _) <- WL.runWriterT m
-                                   return res
-
--- | The `runToExcept` function in this case simply discards any
--- output.
-instance (MonadTLTExcept m e nt ne, Monoid w) =>
-         MonadTLTExcept (WS.WriterT w m) e nt ne where
-  liftTLTExcept = lift . liftTLTExcept
-  runToExcept m = runToExcept $ do (res, _) <- WS.runWriterT m
-                                   return res
 
 -- | Ensure that a computation in `ExceptT` completes without an
 -- uncaught exception.
