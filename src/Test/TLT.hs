@@ -83,9 +83,9 @@ module Test.TLT (
   --      quite verbose.
   --
   --    * The `setExitAfterFailDisplay` function directs `tlt` to exit
-  --      after displaying a set of test results which include at *
-  --      least one failing test. The idea of this default is that a *
-  --      test suite can be broken into parts when it makes sense to *
+  --      after displaying a set of test results which include at
+  --      least one failing test. The idea of this default is that a
+  --      test suite can be broken into parts when it makes sense to
   --      run the latter parts only when the former parts all pass.
   --
   --    * The `inGroup` function groups several tests together as a
