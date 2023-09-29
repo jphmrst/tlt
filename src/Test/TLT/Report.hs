@@ -49,18 +49,26 @@ report (TLTopts showPasses exitAfterFailDisplay) trs =
       tests = totalTestCount trs
   in do report' "" trs
         if fails > 0
-          then do boldRed
+          then do boldIntense
+                  redText
                   putStrLn $
                     "Found " ++ show fails ++ " error"
                       ++ (if fails > 1 then "s" else "")
                       ++ " in " ++ show tests ++ " tests; exiting"
-                  mediumBlack
+                  mediumIntense
+                  blackText
+                  mediumIntense
+                  blackText
                   when exitAfterFailDisplay exitFailure
-          else do boldGreen
+          else do boldIntense
+                  greenText
                   putStrLn $ show tests ++ " test"
                     ++ (if tests > 1 then "s" else "")
                     ++ " passing."
-                  mediumBlack
+                  mediumIntense
+                  blackText
+                  mediumIntense
+                  blackText
   where report' ind trs = forM_ trs $ \ tr ->
           when (failCount tr > 0 || showPasses) $
             case tr of
@@ -81,39 +89,44 @@ report (TLTopts showPasses exitAfterFailDisplay) trs =
                 putStrLn $ ind ++ "- " ++ s ++ ":"
                 report' ("  " ++ ind) trs'
 
--- |Command to set an ANSI terminal to boldface black.
-boldBlack = setSGR [
-  SetColor Foreground Vivid Black, SetConsoleIntensity BoldIntensity ]
--- |Command to set an ANSI terminal to boldface red.
-boldRed = setSGR [
-  SetColor Foreground Vivid Red, SetConsoleIntensity BoldIntensity ]
--- |Command to set an ANSI terminal to boldface green.
-boldGreen = setSGR [
-  SetColor Foreground Vivid Green, SetConsoleIntensity BoldIntensity ]
+-- |Command to set an ANSI terminal to medium-weight.
+mediumIntense :: IO ()
+mediumIntense = setSGR [ SetConsoleIntensity NormalIntensity ]
 
--- |Command to set an ANSI terminal to medium-weight red.
-mediumRed = setSGR [
-  SetColor Foreground Vivid Red, SetConsoleIntensity NormalIntensity ]
--- |Command to set an ANSI terminal to medium-weight green.
-mediumGreen = setSGR [
-  SetColor Foreground Vivid Green, SetConsoleIntensity NormalIntensity ]
--- |Command to set an ANSI terminal to medium-weight blue.
-mediumBlue = setSGR [
-  SetColor Foreground Vivid Blue, SetConsoleIntensity NormalIntensity ]
--- |Command to set an ANSI terminal to medium-weight black.
-mediumBlack = setSGR [
-  SetColor Foreground Vivid Black, SetConsoleIntensity NormalIntensity ]
+-- |Command to set an ANSI terminal to bold-weight.
+boldIntense :: IO ()
+boldIntense = setSGR [ SetConsoleIntensity BoldIntensity ]
+
+-- |Command to set an ANSI terminal to a black foreground.
+blackText :: IO ()
+blackText = setSGR [ SetColor Foreground Vivid Black ]
+
+-- |Command to set an ANSI terminal to a red foreground.
+redText :: IO ()
+redText = setSGR [ SetColor Foreground Vivid Red ]
+
+-- |Command to set an ANSI terminal to a blue foreground.
+blueText :: IO ()
+blueText = setSGR [ SetColor Foreground Vivid Blue ]
+
+-- |Command to set an ANSI terminal to a green foreground.
+greenText :: IO ()
+greenText = setSGR [ SetColor Foreground Vivid Green ]
 
 -- |Command to set an ANSI terminal to the standard TLT weight and
 -- color for a passing test.
 greenPass = do
-  mediumBlue
+  mediumIntense
+  blueText
   putStr "Pass"
-  mediumBlack
+  mediumIntense
+  blackText
 
 -- |Command to set an ANSI terminal to the standard TLT weight and
 -- color for a failing test.
 redFail = do
-  boldRed
+  boldIntense
+  redText
   putStr "FAIL"
-  mediumBlack
+  mediumIntense
+  blackText
