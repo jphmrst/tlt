@@ -1,5 +1,11 @@
 # Changelog for TLT
 
+- 0.6.0 :: A much simpler redesign, stepping back from the very
+  general complicated structure to a much simpler imagined use of
+  always wrapping a @MonadIO@ in an executable test.  The payoff ---
+  aside from just the simplicity --- is that catching all exceptions
+  (not just the special case of an @ExceptT@ layer) is possible.
+
 - 0.5.0 :: Add a variation of @noUncaught@ to disguish @Show@ and
   non-@Show@ exception types in TLT failure reporting.
   

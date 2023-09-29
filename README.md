@@ -1,11 +1,11 @@
 # TLT
 
 TLT is a Haskell test framework oriented towards stacked monad
-transformers.  TLT has no explicit test specifications.  Tests are run
-where declared, with results accumulated and reported at the end.
-Tests can live in an arbitrary monad transformer so long as the `TLT`
-transformer is part of the stack.  Some control of the results display
-is available.
+transformers.  TLT has no explicit, static test specifications.  Tests
+are run where declared, with results accumulated and reported at the
+end.  Tests can run on a stack of arbitrary monad transformers so long
+as the `TLT` transformer is included (currently, at the top).  Some
+control of the results display is available.
 
 See also the TLT Haddock page for additional examples (linked from the
 `Test/TLT` module on 
@@ -16,9 +16,9 @@ See also the TLT Haddock page for additional examples (linked from the
 A TLT test is a command in the `TLT` monad transformer.  There is no
 separation between the specification and execution of a test; TLT
 makes no record of an executable test itself, only of its result.  So
-in the main instance for testing, the core `IO` monad should be
-wrapped in the `TLT` transformer, and in whatever other layers are
-also to be tested.
+in the main instance for testing, the core `IO` monad, and whatever
+other layers are also to be tested, should be wrapped in the `TLT`
+transformer.
 
 In TLT, all tests are associated with a string which names or
 otherwise describes the test.  Each test is introduced with one of the
