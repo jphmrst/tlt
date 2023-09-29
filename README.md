@@ -195,62 +195,7 @@ and the output will be
     - 2 not 2 as result: FAIL Expected other than 2 but got 2
     Found 5 errors in 11 tests; exiting
 
-## Testing monad transformers
-
-In the previous example `TLT` was the outermost (in fact only)
-monad transformer, but it can appear at any level of the test
-suite's application stack.  Using `TLT` at other than the top
-level is easiest when all of the transformers which might wrap it
-are declared as instances of `MonadTLT`.
-
-Consider an application which declares two monad transformers
-`M1T` and `M2T`.  For simplicity here we take them to be just
-aliases for `IdentityT`:
-
-    newtype Monad m =    M1T m a = M1T { unwrap1 :: IdentityT m a }
-    runM1T :: Monad m =    M1T m a -    m a
-    runM1T = runIdentityT . unwrap1
-
-    newtype Monad m =    M2T m a = M2T { unwrap2 :: IdentityT m a }
-    runM2T :: Monad m =    M2T m a -    m a
-    runM2T = runIdentityT . unwrap2
-
-And we elide the usual details of including each of them in
-`Functor`, `Applicative`, `Monad` and `MonadTrans`.  We can
-declare instances of each in `MonadTLT`,
-
-    instance MonadTLT m n =    MonadTLT (M1T m) n where
-      liftTLT = lift . liftTLT
-
-and similarly for `M2T`.  Note that this declaration does require
-`FlexibleInstances` (because `n` does not appear in the instance
-type), `MultiParamTypeClasses` (because we must mention both the top
-transformer `m` and the monadic type `n` directly wrapped by `TLT`
-within `m`), and `UndecidableInstances` (because `n` is not smaller in
-the recursive context of `MonadTLT`, which is not actually a problem
-because in the definition of `MonadTLT`, `n` is functionally dependent
-on `m`, which /is/ smaller in the recursive context) in the module
-where the `MonadTLT` instance is declared.
-
-Now it is convenient to test both transformers:
-
-    ttest = do
-      runM1T $ inGroup "M1T tests" $ m1tests
-      runM2T $ inGroup "M2T tests" $ m2tests
-
-    m1tests = M1T $ do
-      "3 is 3 as pure assertion" ~: 3 @==- 3
-      "4 is 4 as pure assertion" ~: 4 @==- 4
-
-    m2tests = M2T $ do
-      "5 is 5 as pure assertion" ~: 5 @==- 5
-      "6 is 6 as pure assertion" ~: 6 @==- 6
-
-It is not necessary, for example, to harvest test declarations
-from the executions of the `MnT`s for assembly into an overall
-test declaration.
-
-## Testing with exceptions
+## Testing with exceptions --- TO UPDATE
 
 These tests will pass:
 
