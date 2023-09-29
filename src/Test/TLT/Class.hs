@@ -12,6 +12,8 @@ Main state and monad definitions for the @TLT@ testing system.  See
 
 -}
 
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
@@ -42,7 +44,9 @@ import Test.TLT.Buffer
 -- |Synonym for the elements of the `TLT` state.
 data TLTstate (m :: Type -> Type) = TLTstate {
   tltStateOptions :: TLTopts,
-  tltStateAccum :: TRBuf
+  tltStateAccum :: TRBuf,
+  tltStateTestAssertionWrapper :: TLT m [TestFail] -> TLTstate m -> TLT m [TestFail],
+  tltStateGroupRunWrapper :: forall a . TLT m a -> TLT m a
   }
 
 -- |Monad transformer for TLT tests.  This layer stores the results
@@ -66,9 +70,19 @@ runTLT :: TLTReady m => TLT m r -> m (TLTopts, [TestResult])
 runTLT (TLT t) = do
   (_, state) <- runStateT t $ TLTstate {
     tltStateOptions = defaultOpts,
-    tltStateAccum = Top 0 0 []
+    tltStateAccum = Top 0 0 [],
+    tltStateTestAssertionWrapper = testRunWithCatch,
+    tltStateGroupRunWrapper = id
     }
   return (tltStateOptions state, closeTRBuf $ tltStateAccum state)
+
+-- | Runner for a single test catching all thrown exceptions.
+testRunWithCatch ::
+  TLTReady m => TLT m [TestFail] -> TLTstate m -> TLT m [TestFail]
+testRunWithCatch a state =
+  TLT $ liftIO $ catch (do r <- runForTest $ runTLTtest state a
+                           return $! r)
+                     (\e -> return [Erred $ show (e :: SomeException)])
 
 -- | Prepare to execute one test in the monad wrapped for tests.
 runTLTtest :: MonadIO m => TLTstate m -> TLT m [TestFail] -> m [TestFail]
@@ -113,12 +127,12 @@ tltPass desc = TLT $ do
 
 -- |Organize the tests in the given subcomputation as a separate group
 -- within the test results we will report.
-inGroup :: MonadIO m => String -> TLT m a -> TLT m a
+inGroup :: forall m a . MonadIO m => String -> TLT m a -> TLT m a
 inGroup name group = do
   state <- TLT get
   TLT $ put $
     state { tltStateAccum = Buf (tltStateAccum state) 0 0 name [] }
-  result <- group
+  result <- tltStateGroupRunWrapper state group
   state' <- TLT $ get
   TLT $ put $
     state' { tltStateAccum = popGroup $ tltStateAccum state' }

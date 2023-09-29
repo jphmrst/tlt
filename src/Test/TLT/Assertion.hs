@@ -52,9 +52,8 @@ infix 0 ~:, ~::, ~::-
 (~:) :: TLTReady m => String -> Assertion (TLT m) -> TLT m ()
 s ~: a = do
   state <- TLT get
-  assessment <- TLT $ liftIO $ catch (do r <- runForTest $ runTLTtest state a
-                                         return $! r)
-    (\e -> return [Erred $ show (e :: SomeException)])
+  let wrapper = tltStateTestAssertionWrapper state
+  assessment <- wrapper a state
   TLT $ put $
     state { tltStateAccum =
               addResult (tltStateAccum state) $
