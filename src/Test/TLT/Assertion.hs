@@ -1,7 +1,7 @@
 {-|
 Module      : Assertion
 Description : Assertions and related utilities for TLT
-Copyright   : (c) John Maraist, 2022
+Copyright   : (c) John Maraist 2022, 2023
 License     : GPL3
 Maintainer  : haskell-tlt@maraist.org
 Stability   : experimental
