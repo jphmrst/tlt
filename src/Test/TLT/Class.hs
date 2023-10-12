@@ -14,6 +14,8 @@ Main state and monad definitions for the @TLT@ testing system.  See
 
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
@@ -66,7 +68,7 @@ instance MonadTrans TLT where lift = TLT . lift
 -- package.  If you are using TLT itself as your test framework, and
 -- wishing to see its human-oriented output directly, consider using
 -- `Test.TLT.tlt` instead.
-runTLT :: TLTReady m => TLT m r -> m (TLTopts, [TestResult])
+runTLT :: (Testable m, MonadIO m) => TLT m r -> m (TLTopts, [TestResult])
 runTLT (TLT t) = do
   (_, state) <- runStateT t $ TLTstate {
     tltStateOptions = defaultOpts,
@@ -78,7 +80,7 @@ runTLT (TLT t) = do
 
 -- | Runner for a single test catching all thrown exceptions.
 testRunWithCatch ::
-  TLTReady m => TLT m [TestFail] -> TLTstate m -> TLT m [TestFail]
+  (Testable m, MonadIO m) => TLT m [TestFail] -> TLTstate m -> TLT m [TestFail]
 testRunWithCatch a state =
   TLT $ liftIO $ catch (do r <- runForTest $ runTLTtest state a
                            return $! r)
@@ -140,6 +142,61 @@ inGroup name group = do
 
 {- --------------------------------------------------------------- -}
 
+{-
+-- | Class of monad transformers which preserve TLT testability modulo
+-- universal quantification over a dummy type variable, for example
+-- `STT`.
+class TestableT2 m where
+  run2TransForTest :: Monad n =>
+    forall a . (forall s . m s n [TestFail]) -> n [TestFail]
+
+instance TestableT2 STT where run2TransForTest = runSTT
+
+class Testable2 m where
+  -- | Run the `IO`-based computation of one test.
+  run2ForTest :: (forall s . m s [TestFail]) -> IO [TestFail]
+
+instance (Testable m, TestableT2 t, Monad m) => Testable2 (t m) where
+  run2ForTest = runForTest . run2TransForTest
+-}
+
+-- | Class of monad transformers which preserve TLT testability.
+--
+-- Some standard transformers do not have built-in instances:
+--
+--  - `Control.Monad.Trans.Reader.runReaderT`,
+--    `Control.Monad.Trans.State.Lazy.runStateT`, and
+--    `Control.Monad.Trans.State.Strict.runStateT` all require an
+--    argument of the initial internal state type;
+--
+--  - `runSTT` requires its argument to be universally quantified over
+--    the state thread dummy type, which we do not have in this class
+--    signature;
+--
+--  - The `ResourceT` transformer imposes an additional constraint on
+--  - the underlying monad which is not expressible here (but notice
+--  - the instance declaration on `Testable` `ResourceT`).
+class TestableT m where
+  runTransForTest :: forall n . Monad n => m n [TestFail] -> n [TestFail]
+
+instance TestableT IdentityT where runTransForTest = runIdentityT
+
+instance Show e => TestableT (ExceptT e) where
+  runTransForTest = fmap (\x -> case x of
+                                  Left l -> [Erred $ show l]
+                                  Right r -> r) . runExceptT
+
+instance TestableT MaybeT where
+  runTransForTest = fmap (\x -> case x of
+                                  Nothing -> []
+                                  Just x -> x) . runMaybeT
+
+instance Monoid w => TestableT (WL.WriterT w) where
+  runTransForTest = fmap (\(a,_) -> a) . WL.runWriterT
+
+instance Monoid w => TestableT (WS.WriterT w) where
+  runTransForTest = fmap (\(a,_) -> a) . WS.runWriterT
+
 -- | Class of monads which support TLT testings.
 --
 -- Some standard classes do not have built-in instances:
@@ -149,35 +206,17 @@ inGroup name group = do
 -- argument of the initial internal state type; `runSTT` requires its
 -- argument to be universally quantified over the state thread dummy
 -- type, which we do not have in this class signature.
-class MonadIO m => TLTReady m where
+class Testable m where
   -- | Run the `IO`-based computation of one test.
   runForTest :: m [TestFail] -> IO [TestFail]
 
 -- | An `IO` computation is the base case.
-instance TLTReady IO where runForTest = id
+instance Testable IO where runForTest = id
 
-instance TLTReady m => TLTReady (IdentityT m) where
-  runForTest = runForTest . runIdentityT
+instance (Testable m, TestableT t, Monad m) => Testable (t m) where
+  runForTest = runForTest . runTransForTest
 
-instance (Show e, TLTReady m) => TLTReady (ExceptT e m) where
-  runForTest = runForTest . fmap (\x -> case x of
-                                     Left l -> [Erred $ show l]
-                                     Right r -> r) . runExceptT
-
-instance TLTReady m => TLTReady (MaybeT m) where
-  runForTest = runForTest . fmap (\x -> case x of
-                                     Nothing -> []
-                                     Just x -> x) . runMaybeT
-
-instance (TLTReady m, Monoid w) =>
-         TLTReady (WL.WriterT w m) where
-  runForTest = runForTest . fmap (\(a,_) -> a) . WL.runWriterT
-
-instance (TLTReady m, Monoid w) =>
-         TLTReady (WS.WriterT w m) where
-  runForTest = runForTest . fmap (\(a,_) -> a) . WS.runWriterT
-
-instance (TLTReady m, MonadUnliftIO m) => TLTReady (ResourceT m) where
+instance (Testable m, MonadUnliftIO m) => Testable (ResourceT m) where
   runForTest = runForTest . runResourceT
 
 {- ---------------------------------------------------------------

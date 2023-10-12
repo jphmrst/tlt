@@ -49,7 +49,7 @@ infix 0 ~:, ~::, ~::-
 -- > test = do
 -- >   "2 is 2 as result" ~: 2 @== return 2    -- This test passes.
 -- >   "2 not 3" ~: 2 @/=- 3                   -- This test fails.
-(~:) :: TLTReady m => String -> Assertion (TLT m) -> TLT m ()
+(~:) :: (Testable m, MonadIO m) => String -> Assertion (TLT m) -> TLT m ()
 s ~: a = do
   state <- TLT get
   let wrapper = tltStateTestAssertionWrapper state
@@ -70,7 +70,7 @@ s ~: a = do
 -- >   "2 is 3!?" ~::- myFn 4 "Hammer"                -- Passes if myFn (which
 -- >                                                  -- must be monadic)
 -- >                                                  -- returns True.
-(~::-) :: TLTReady m => String -> Bool -> TLT m ()
+(~::-) :: (Testable m, MonadIO m) => String -> Bool -> TLT m ()
 s ~::- b = s ~:
   return (if b then [] else [Asserted $ "Expected True but got False"])
 {-# INLINE (~::-) #-}
@@ -85,7 +85,7 @@ s ~::- b = s ~:
 -- >   "True passes" ~::- True               -- This test passes.
 -- >   "2 is 2 as single Bool" ~::- 2 == 2   -- This test passes.
 -- >   "2 is 3!?" ~::- 2 == 2                -- This test fails.
-(~::) :: TLTReady m => String -> TLT m Bool -> TLT m ()
+(~::) :: (Testable m, MonadIO m) => String -> TLT m Bool -> TLT m ()
 s ~:: bM =
   s ~: fmap (\b -> if b
                    then []

@@ -172,7 +172,7 @@ module Test.TLT (
   -- functions, are all below.
 
   -- * The TLT transformer
-  TLT, -- MonadTLT(liftTLT),
+  TLT, TestableT(runTransForTest), Testable(runForTest),
   -- ** Session options
   reportAllTestResults, setExitAfterFailDisplay,
 

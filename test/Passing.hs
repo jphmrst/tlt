@@ -1,3 +1,4 @@
+{-# LANGUAGE ExplicitForAll #-}
 
 import Test.TLT
 import Control.Monad.Trans.Except
@@ -45,3 +46,5 @@ extest = do
     (\e -> "The exception should be \"Boom\""
              ~: "Boom" @==- e)
 -}
+
+-- sttUser :: ExceptT String (forall s . STT s IO ())
